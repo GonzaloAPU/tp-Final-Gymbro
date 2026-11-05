@@ -1,0 +1,42 @@
+{
+  "name": "smartgymbro-tp-final",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:frontend": "npm run start --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend && npm run supabase:test",
+    "test:frontend": "npm run test --workspace frontend",
+    "typecheck": "npm run typecheck --workspace frontend",
+    "db:generate": "npm run db:generate --workspace backend",
+    "db:migrate": "npm run db:migrate --workspace backend --",
+    "db:seed": "npm run db:seed --workspace backend",
+    "test:recovery": "node tools/verify-workout-recovery.cjs",
+    "test:alarms": "node tools/verify-alarms.cjs",
+    "supabase:sql": "node tools/build-supabase-sql.mjs",
+    "supabase:test": "node --test tools/supabase-schema.test.mjs tools/personal-records-sql.test.mjs tools/leaderboard-sql.test.mjs tools/spanish-schema.test.mjs",
+    "db:diagrama": "node tools/build-database-diagram.mjs",
+    "db:espanol:sql": "node tools/build-spanish-schema.mjs",
+    "configurar:local": "node tools/setup-local.mjs",
+    "postgres:up": "docker compose --env-file postgres/.env -f postgres/compose.yaml up -d",
+    "postgres:stop": "docker compose --env-file postgres/.env -f postgres/compose.yaml stop",
+    "postgres:logs": "docker compose --env-file postgres/.env -f postgres/compose.yaml logs -f postgres-primary",
+    "postgres:verificar": "npm run db:check:local --workspace backend",
+    "verificar:modulos": "node tools/verify-tp-layout.mjs",
+    "postgres:smoke": "node postgres/smoke-local.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.16",
+    "concurrently": "^9.1.2"
+  },
+  "description": "Base local y modular del TP final; integración del equipo en develop.",
+  "engines": {
+    "node": "^24.15.0",
+    "npm": ">=10"
+  }
+}

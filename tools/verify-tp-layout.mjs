@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+for(const path of ['backend/package.json','frontend/package.json','postgres/compose.yaml','postgres/sql/01-bootstrap.sql','postgres/sql/08-nombres-espanol.sql','shared/legal-documents.json','docs/FLUJO-GIT.md'])assert.ok(fs.existsSync(root+path),path);
+const proxy=JSON.parse(fs.readFileSync(root+'frontend/proxy.conf.json','utf8'));
+assert.equal(proxy['/api/**'].target,'http://127.0.0.1:3100');
+const rootPackage=JSON.parse(fs.readFileSync(root+'package.json','utf8'));
+assert.deepEqual(rootPackage.workspaces,['frontend','backend']);
+assert.ok(!rootPackage.devDependencies['firebase-tools']);
+assert.ok(!fs.existsSync(root+'backend/sql/supabase'));
+console.log('Módulos, SQL, contrato local y workspaces verificados.');

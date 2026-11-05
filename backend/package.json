@@ -1,0 +1,33 @@
+{
+  "name": "@smartgymbro/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "build": "node --check src/server.js",
+    "test": "node ../tools/run-backend-tests.cjs",
+    "db:generate": "node --check src/models/index.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:seed:exercises": "node scripts/seed-exercises.js",
+    "db:verify:normalization": "node scripts/verify-normalization.js",
+    "db:verify:sync": "node scripts/verify-session-sync.js",
+    "db:verify:welcome": "node scripts/verify-welcome.js",
+    "db:check:supabase": "node scripts/check-supabase.js",
+    "db:check:local": "node ../postgres/verificar.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7",
+    "zod": "^3.25.28"
+  }
+}

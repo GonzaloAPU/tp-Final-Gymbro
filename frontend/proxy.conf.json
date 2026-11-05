@@ -1,0 +1,9 @@
+{
+  "/api/**": {
+    "target": "http://127.0.0.1:3100",
+    "secure": false,
+    "changeOrigin": true,
+    "proxyTimeout": 60000,
+    "timeout": 65000
+  }
+}

@@ -1,0 +1,36 @@
+name: smartgymbro-tp
+services:
+  postgres-primary:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Ejecutar npm run configurar:local}
+      POSTGRES_USER: ${POSTGRES_USER:?Ejecutar npm run configurar:local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ejecutar npm run configurar:local}
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - postgres_tp_data:/var/lib/postgresql/data
+      - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Ejecutar npm run configurar:local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Ejecutar npm run configurar:local}
+    ports:
+      - "127.0.0.1:5051:80"
+    volumes:
+      - pgadmin_tp_data:/var/lib/pgadmin
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+volumes:
+  postgres_tp_data:
+    name: smartgymbro_tp_postgres_data
+  pgadmin_tp_data:
+    name: smartgymbro_tp_pgadmin_data

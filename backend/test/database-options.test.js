@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {databaseOptions} from '../src/database-options.js';
+const remote={DB_CONNECTION_MODE:'SUPABASE',DATABASE_URL:'postgresql://postgres.example:fake-pass@aws-0-us-east-1.pooler.supabase.com:5432/postgres'};
+test('base: conserva URL local y limita pool',()=>{const s=databaseOptions({DATABASE_URL:'postgres://local/test'});assert.equal(s.url,'postgres://local/test');assert.equal(s.options.pool.max,3);assert.equal(s.options.dialectOptions,undefined);assert.equal(s.options.define.schema,undefined);});
+test('base: exige URL',()=>assert.throws(()=>databaseOptions({}),/DATABASE_URL/));
+test('base: ya no admite configuración de Google',()=>assert.throws(()=>databaseOptions({DB_CONNECTION_MODE:'CLOUD_SQL'}),/inválido/));
+test('base: Supabase usa TLS verificado y esquema privado',()=>{const s=databaseOptions(remote);assert.equal(s.options.dialectOptions.ssl.rejectUnauthorized,true);assert.equal(s.options.define.schema,'gymbro');assert.equal(s.options.pool.max,3);});
+test('base: URL no puede desactivar verificación TLS',()=>{const s=databaseOptions({...remote,DATABASE_URL:remote.DATABASE_URL+'?sslmode=no-verify&ssl=false&application_name=gymbro'});assert.ok(!s.url.includes('ssl'));assert.equal(s.options.dialectOptions.ssl.rejectUnauthorized,true);assert.equal(new URL(s.url).searchParams.get('application_name'),'gymbro');});
+test('base: CA se carga desde archivo separado',()=>{let file;const s=databaseOptions({...remote,DB_SSL_CA_FILE:'/etc/secrets/ca.crt'},{readCertificate:path=>{file=path;return 'test-ca';}});assert.equal(file,'/etc/secrets/ca.crt');assert.equal(s.options.dialectOptions.ssl.ca,'test-ca');});
+test('base: archivo CA ausente no desactiva TLS',()=>assert.throws(()=>databaseOptions({...remote,DB_SSL_CA_FILE:'missing'},{readCertificate:()=>{throw Error('archivo ausente');}}),/ausente/));
+test('base: selecciona esquema al abrir sesión',async()=>{const sql=[];await databaseOptions(remote).options.hooks.afterConnect({query:async q=>sql.push(q)});assert.deepEqual(sql,['SET search_path TO gymbro, public']);});
+test('base: rechaza pooler de transacciones',()=>assert.throws(()=>databaseOptions({...remote,DATABASE_URL:remote.DATABASE_URL.replace(':5432',':6543')}),/Session/));
+test('base: acepta conexión directa de Supabase',()=>assert.ok(databaseOptions({...remote,DATABASE_URL:'postgresql://postgres:fake-pass@db.example.supabase.co:5432/postgres'}).url));
+for(const url of ['invalid','https://supabase.com','postgres://u:p@localhost:5432/postgres','postgres://u@aws-0-us-east-1.pooler.supabase.com:5432/postgres','postgres://u:p@aws-0-us-east-1.pooler.supabase.com:5432/wrong'])test(`base: rechaza URL incompleta o destino ajeno ${url.split(':')[0]}`,()=>assert.throws(()=>databaseOptions({...remote,DATABASE_URL:url})));

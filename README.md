@@ -1,77 +1,56 @@
 # Gymbro AI — TP Final
 
-Repositorio del equipo para integrar el trabajo práctico. Las entregas locales están separadas por integrante; cada persona incorpora sus archivos y hace sus propios commits.
+Repositorio local nuevo, independiente de Gymbro. Contiene una base funcional de Angular, Express/Sequelize y PostgreSQL para que el equipo desarrolle la infraestructura del TP por ramas.
 
-## Ramas y responsabilidades
+## Módulos
 
-| Rama | Responsable | Trabajo |
-|---|---|---|
-| main | Gonzalo y revisión del equipo | Entrega aprobada |
-| develop | Gonzalo | Integración y pruebas del conjunto |
-| feature/aldo | Aldo | Aplicación, contenedores, CI/CD y túnel |
-| feature/facundo | Facundo | PostgreSQL, réplica, carga e índices |
-| feature/sonia | Sonia | Monitoreo y automatización |
-| feature/rodrigo | Rodrigo | Seguridad e incidencias |
+- `backend/`: API Node.js, modelos, servicios, migraciones y pruebas.
+- `frontend/`: interfaz Angular 22.2.4, exclusivamente web para el TP.
+- `postgres/`: SQL, Docker Compose local y tareas de datos/replicación de Facundo.
+- `shared/`: documentos y contratos compartidos por la aplicación. No es un cuarto servicio.
+- `tools/`: pruebas y generadores compartidos.
+- `infra/`: espacios independientes de app, CI/CD, monitoreo, n8n, incidencias y Nextcloud.
+- `docs/`: cronograma, tareas, flujo Git, evidencias e integración.
 
-## Trabajo de cada integrante
+## Inicio local
 
-Clonar este repositorio, partir de develop y crear la rama propia. Ejemplo para Aldo:
+Requisitos: Node 24.15 o posterior de la rama 24, npm y Docker con Compose v2.
 
-```bash
-git clone https://github.com/GonzaloAPU/tp-Final-Gymbro.git
-cd tp-Final-Gymbro
-git switch develop
-git switch -c feature/aldo
+```powershell
+npm ci
+npm run configurar:local
+npm run postgres:up
+npm run postgres:verificar
+npm run dev
 ```
 
-Copiar aquí el contenido de la carpeta archivos/ de la entrega personal, conservando las rutas de destino. No subir la carpeta con el nombre del integrante, integracion-local/, dependencias, compilaciones, logs ni archivos .env. Revisar los archivos antes del primer commit y añadir una .gitignore adecuada.
+Frontend: http://localhost:4300. API: http://localhost:3100/api/health. pgAdmin: http://localhost:5051. PostgreSQL: 127.0.0.1:55433, base y usuario `smartgymbro_tp`. Las contraseñas locales están en los `.env` generados; nunca se suben a Git.
 
-```bash
-git add RUTAS_DE_TU_PARTE
-git commit -m "Describe el cambio realizado y probado"
-git push -u origin feature/aldo
+Para pgAdmin, el servidor dentro de Docker se llama `postgres-primary`, puerto 5432. La inicialización carga 190 ejercicios y deja las 16 tablas en español. Solo se ejecuta al crear un volumen vacío. No contiene cuentas ni entrenamientos reales.
+
+Gemini y EmailJS quedan sin configurar; las rutinas locales funcionan sin servicios externos. El frontend utiliza la API local, no Render ni Supabase. Los volúmenes y puertos son distintos de los del proyecto original.
+
+## Validación
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+npm run verificar:modulos
 ```
 
-Usar el nombre correspondiente a cada integrante. Abrir los pull requests hacia develop. Tras integrar y probar todas las partes, abrir un pull request de develop hacia main.
+Las pruebas usan servicios simulados y PostgreSQL embebido. La replicación, 6 millones de registros, contenedores web, CI/CD, monitoreo, n8n, Mantis, Nextcloud y túnel son tareas del equipo, todavía pendientes; no se presentan como implementadas.
 
-main exige pull request y revisión antes del merge. Los compañeros crean sus propias ramas; Gonzalo administra las reglas y coordina la integración. Las validaciones obligatorias de CI se configurarán cuando exista el pipeline de Aldo.
+## Repositorio y ramas
 
-Este commit inicial solo establece el punto de partida compartido; no incorpora ni presenta como terminadas las entregas de los compañeros.
+Esta es la base de integración publicada en develop de GonzaloAPU/tp-Final-Gymbro. Las ramas son main, develop, feature/aldo, feature/facundo, feature/sonia y feature/rodrigo. Cada compañero crea su feature desde develop y hace sus propios commits. Los PR van a develop; la entrega validada se integra en main mediante PR y una aprobación.
 
+El repositorio ya está inicializado: clonar, no crear otro historial ni hacer force push. Consultar docs/FLUJO-GIT.md y docs/CONFIGURACION-GITHUB.md para las reglas y la autenticación de GHCR con GITHUB_TOKEN. Las partes de infraestructura pendientes continúan siendo tareas del equipo.
 
-## Registro de imágenes: GHCR
+## Comprobación real de la base
 
-El equipo usará GitHub Container Registry. No hacen falta DOCKER_USERNAME, DOCKER_PASSWORD ni un token personal: GitHub Actions proporciona GITHUB_TOKEN automáticamente a cada ejecución.
+Con PostgreSQL iniciado, ejecutar `npm run postgres:smoke`. La prueba clona la base local en una base temporal, prueba las rutas HTTP y elimina la copia al finalizar. No envía correos ni llama a Gemini. El PostgreSQL original del TP conserva sus datos.
 
-Aldo debe incorporar esta autenticación al job que publique las imágenes:
+pgAdmin usa el correo local `admin@example.com` y la contraseña generada en `postgres/.env`. No se envían mensajes a ese correo.
 
-```yaml
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Autenticar en GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      # Agregar los pasos de build y push cuando estén los Dockerfiles.
-```
-
-Este fragmento configura la autenticación; no es un pipeline completo. Los permisos packages: write se declaran en el workflow, no mediante un secreto creado manualmente. Mantener los permisos predeterminados del repositorio en lectura y dar escritura únicamente al job que publica.
-
-Usar nombres en minúsculas, por ejemplo:
-
-- ghcr.io/gonzaloapu/tp-final-gymbro-backend
-- ghcr.io/gonzaloapu/tp-final-gymbro-frontend
-
-Publicar desde código integrado y revisado, preferentemente después del merge a main. Los pull requests deben validar y compilar, sin publicar imágenes. No ejecutar código no revisado de un PR con tokens de escritura.
-
-La implementación de Dockerfiles, build, push y disparadores corresponde a la entrega de Aldo. Si una imagen GHCR ya existiera y el push fuera rechazado, revisar en la configuración de ese paquete que este repositorio tenga acceso de Actions. Esta preparación no crea ni publica paquetes.
-
-Referencia: https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images
+Ver el resultado y los límites de la revisión en `docs/VALIDACION-INICIAL.md`. Antes de compartir la carpeta, excluir `.env`, `node_modules`, archivos de compilación y logs; cada compañero ejecuta `npm ci` y `npm run configurar:local`.
