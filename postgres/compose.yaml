@@ -1,34 +1,53 @@
-name: smartgymbro-tp
 services:
   postgres-primary:
     image: postgres:17-alpine
+    container_name: gymbro-postgres-primary
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?Ejecutar npm run configurar:local}
-      POSTGRES_USER: ${POSTGRES_USER:?Ejecutar npm run configurar:local}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ejecutar npm run configurar:local}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "127.0.0.1:55433:5432"
+      # SEGURIDAD: 127.0.0.1 aísla el puerto a la máquina local (Loopback).
+      # Usa el puerto acordado 55433 para evitar colisiones.
+      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
     volumes:
+      # Persistencia de datos físicos en el host
       - postgres_tp_data:/var/lib/postgresql/data
+      # Scripts de inicio automático: crea esquema gymbro, 16 tablas y 190 ejercicios
       - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
       - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+    networks:
+      - gymbro_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 5
+
   pgadmin:
     image: dpage/pgadmin4:latest
+    container_name: gymbro-pgadmin
+    restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Ejecutar npm run configurar:local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Ejecutar npm run configurar:local}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
-      - "127.0.0.1:5051:80"
+      # SEGURIDAD: pgAdmin accesible únicamente en local por el puerto 5051
+      - "127.0.0.1:${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_tp_data:/var/lib/pgadmin
+    networks:
+      - gymbro_network
     depends_on:
       postgres-primary:
         condition: service_healthy
+
+networks:
+  gymbro_network:
+    name: gymbro_network
+    driver: bridge
+
 volumes:
   postgres_tp_data:
     name: smartgymbro_tp_postgres_data
