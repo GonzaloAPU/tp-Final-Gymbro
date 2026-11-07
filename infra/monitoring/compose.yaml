@@ -1,0 +1,125 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: gymbro-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - gymbro-monitoring
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: gymbro-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - gymbro-monitoring
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: gymbro-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - gymbro-monitoring
+
+  cadvisor-layerdb-init:
+    image: alpine:3.20
+    container_name: gymbro-cadvisor-layerdb-init
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - "rm -rf /layerdb/* && for d in /ro-overlayfs/*/; do id=$$(basename $$d); mkdir -p /layerdb/$$id; printf '%s' \"$$id\" > /layerdb/$$id/mount-id; done && echo 'layerdb generated'"
+    volumes:
+      - /var/lib/docker/rootfs/overlayfs:/ro-overlayfs:ro
+      - cadvisor_layerdb:/layerdb
+    networks:
+      - gymbro-monitoring
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: gymbro-cadvisor
+    restart: unless-stopped
+    depends_on:
+      cadvisor-layerdb-init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - cadvisor_layerdb:/var/lib/docker/image/overlayfs/layerdb/mounts:ro
+    cgroup: host
+    networks:
+      - gymbro-monitoring
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: gymbro-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE}
+    ports:
+      - "9187:9187"
+    networks:
+      - gymbro-monitoring
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: gymbro-blackbox-exporter
+    restart: unless-stopped
+    volumes:
+      - ./blackbox.yml:/etc/blackbox.yml:ro
+    ports:
+      - "9115:9115"
+    networks:
+      - gymbro-monitoring
+
+  docker-exporter:
+    image: python:3.12-alpine
+    container_name: gymbro-docker-exporter
+    restart: unless-stopped
+    volumes:
+      - ./docker-stats-exporter:/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["python3", "/app/exporter.py"]
+    ports:
+      - "9189:9189"
+    networks:
+      - gymbro-monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  cadvisor_layerdb:
+
+networks:
+  gymbro-monitoring:
+    driver: bridge

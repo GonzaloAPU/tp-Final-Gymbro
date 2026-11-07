@@ -1,0 +1,7 @@
+#indica cómo comprobar la disponibilidad de los servicios.
+modules:
+  http_2xx:
+    prober: http
+    http:
+      valid_status_codes: [200, 301, 302]
+      preferred_ip_protocol: "ip4"
