@@ -52,6 +52,9 @@ services:
     environment:
       - PORT=3100
       - NODE_ENV=production
+      - DB_CONNECTION_MODE=LOCAL
+      - DB_SCHEMA=gymbro
+      - DB_NAMES_LANGUAGE=es
       - DATABASE_URL=postgres://smartgymbro_tp:smartgymbro_tp@postgres:5432/smartgymbro_tp
       - JWT_SECRET=clave_secreta_super_segura_de_produccion_32_caracteres_minimo
       - FRONTEND_URL=http://localhost:4300
