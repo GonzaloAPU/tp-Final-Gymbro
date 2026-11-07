@@ -7,3 +7,5 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: true
+
+#prometheus.yml dentro de Grafana: configura Prometheus como fuente de datos.

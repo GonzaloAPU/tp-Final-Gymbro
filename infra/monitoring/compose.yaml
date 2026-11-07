@@ -61,7 +61,9 @@ services:
     container_name: gymbro-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE:-postgresql://smartgymbro_tp:smartgymbro_tp@postgres:5432/smartgymbro_tp?sslmode=disable}
+      DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE:-postgresql://smartgymbro_tp:smartgymbro_tp@host.docker.internal:55433/smartgymbro_tp?sslmode=disable}
+    ports:
+      - "9187:9187"
     networks:
       - gymbro-monitoring
 
@@ -71,6 +73,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./blackbox.yml:/etc/blackbox.yml:ro
+    ports:
+      - "9115:9115"
     networks:
       - gymbro-monitoring
 

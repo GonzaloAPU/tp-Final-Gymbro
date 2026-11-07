@@ -1,3 +1,4 @@
+#contiene las condiciones que deben generar alertas.
 groups:
   - name: gymbro
     rules:
