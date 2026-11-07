@@ -35,16 +35,6 @@ services:
     networks:
       - gymbro-monitoring
 
-  node-exporter:
-    image: prom/node-exporter:v1.7.0
-    container_name: gymbro-node-exporter
-    restart: unless-stopped
-    pid: host
-    ports:
-      - "9100:9100"
-    networks:
-      - gymbro-monitoring
-
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: gymbro-cadvisor

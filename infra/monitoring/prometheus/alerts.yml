@@ -1,4 +1,3 @@
-#contiene las condiciones que deben generar alertas.
 groups:
   - name: gymbro
     rules:
@@ -9,7 +8,7 @@ groups:
           severity: critical
         annotations:
           summary: "API backend no disponible"
-          description: "El probe HTTP del blackbox exporter no responde correctamente."
+          description: "El probe HTTP del blackbox exporter no responde correctamente al backend /api/health."
 
       - alert: BackendHighLatency
         expr: probe_duration_seconds{job="blackbox_backend"} > 2
@@ -29,20 +28,20 @@ groups:
           summary: "PostgreSQL no disponible"
           description: "El exportador de PostgreSQL no alcanza la base de datos o reporta caída."
 
-      - alert: HighCpuUsage
-        expr: 100 * (1 - avg_over_time(node_cpu_seconds_total{mode="idle"}[5m]) / avg_over_time(node_cpu_seconds_total[5m])) > 80
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Uso elevado de CPU"
-          description: "El uso de CPU supera el umbral configurado (80%)."
-
       - alert: HighMemoryUsage
-        expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 85
+        expr: 100 * (1 - windows_memory_available_bytes / windows_memory_total_bytes) > 85
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: "Uso elevado de memoria"
           description: "El uso de memoria supera el umbral configurado (85%)."
+
+      - alert: HighCpuUsage
+        expr: 100 * rate(windows_cpu_time_total[5m]) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de CPU"
+          description: "El uso de CPU supera el umbral configurado (85%)."

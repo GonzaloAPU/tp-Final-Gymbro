@@ -1,4 +1,3 @@
-#prometheus.yml: indica a Prometheus dónde buscar las métricas.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -11,9 +10,9 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: node_exporter
+  - job_name: windows_exporter
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['host.docker.internal:9188']
 
   - job_name: cadvisor
     static_configs:
@@ -25,6 +24,9 @@ scrape_configs:
 
   - job_name: blackbox_backend
     metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: ["http://host.docker.internal:3100/api/health"]
     static_configs:
       - targets:
           - blackbox:9115
