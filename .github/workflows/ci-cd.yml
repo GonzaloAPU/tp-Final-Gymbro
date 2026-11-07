@@ -2,7 +2,7 @@ name: CI/CD Pipeline - SmartGymBro
 
 on:
   push:
-    branches: [ develop, main ]
+    branches: [ develop, main, 'feature/**' ]
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ develop, main ]
@@ -52,6 +52,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
     steps:
       - name: Descargar código del repositorio
@@ -70,23 +73,23 @@ jobs:
 
       # 2. Autenticación en Docker Hub (Cuenta de Aldo Dante)
       - name: Iniciar sesión en Docker Hub
-        if: "${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}"
+        if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != ''
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
 
       # 3. Preparar etiquetas dinámicas para Backend
       - name: Definir etiquetas de Backend
         id: meta-backend
         run: |
           TAGS="ghcr.io/gonzaloapu/tp-final-gymbro-backend:latest,ghcr.io/gonzaloapu/tp-final-gymbro-backend:${{ github.sha }}"
-          if [ "${{ secrets.DOCKER_USERNAME }}" != "" ]; then
+          if [ -n "$DOCKER_USERNAME" ]; then
             TAGS="$TAGS,aldodante/smartgymbro-backend:latest,aldodante/smartgymbro-backend:${{ github.sha }}"
           fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAGS="$TAGS,ghcr.io/gonzaloapu/tp-final-gymbro-backend:${{ github.ref_name }}"
-            if [ "${{ secrets.DOCKER_USERNAME }}" != "" ]; then
+            if [ -n "$DOCKER_USERNAME" ]; then
               TAGS="$TAGS,aldodante/smartgymbro-backend:${{ github.ref_name }}"
             fi
           fi
@@ -106,12 +109,12 @@ jobs:
         id: meta-frontend
         run: |
           TAGS="ghcr.io/gonzaloapu/tp-final-gymbro-frontend:latest,ghcr.io/gonzaloapu/tp-final-gymbro-frontend:${{ github.sha }}"
-          if [ "${{ secrets.DOCKER_USERNAME }}" != "" ]; then
+          if [ -n "$DOCKER_USERNAME" ]; then
             TAGS="$TAGS,aldodante/smartgymbro-frontend:latest,aldodante/smartgymbro-frontend:${{ github.sha }}"
           fi
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAGS="$TAGS,ghcr.io/gonzaloapu/tp-final-gymbro-frontend:${{ github.ref_name }}"
-            if [ "${{ secrets.DOCKER_USERNAME }}" != "" ]; then
+            if [ -n "$DOCKER_USERNAME" ]; then
               TAGS="$TAGS,aldodante/smartgymbro-frontend:${{ github.ref_name }}"
             fi
           fi
