@@ -190,7 +190,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "100 * rate(windows_cpu_time_total[5m])",
+          "expr": "100 * (1 - sum by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) / sum by (instance) (rate(node_cpu_seconds_total[5m])))",
           "legendFormat": "CPU {{instance}}",
           "range": true,
           "refId": "A"
@@ -238,7 +238,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "100 * (1 - windows_memory_available_bytes / windows_memory_total_bytes)",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
           "legendFormat": "mem {{instance}}",
           "range": true,
           "refId": "A"
@@ -286,8 +286,8 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "100 * (1 - windows_disk_avail_bytes / windows_disk_total_bytes)",
-          "legendFormat": "disk {{device}}",
+          "expr": "100 * (1 - node_filesystem_avail_bytes{fstype!=\"tmpfs\",fstype!=\"rootfs\"} / node_filesystem_size_bytes{fstype!=\"tmpfs\",fstype!=\"rootfs\"})",
+          "legendFormat": "disk {{mountpoint}}",
           "range": true,
           "refId": "A"
         }
@@ -334,7 +334,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (rate(windows_network_receive_bytes_total[5m]))",
+          "expr": "sum by (instance) (rate(node_network_receive_bytes_total{device!=\"lo\"}[5m]))",
           "legendFormat": "rx {{instance}}",
           "range": true,
           "refId": "A"
@@ -533,6 +533,135 @@
         }
       ],
       "title": "PostgreSQL exporter status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "STOPPED"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "RUNNING"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "docker_container_running{name=~\"gymbro-.*\", name!=\"gymbro-cadvisor-layerdb-init\"}",
+          "instant": true,
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Contenedores (estado: RUNNING=1 / STOPPED=0)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "docker_container_restart_count{name=~\"gymbro-.*\"}",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Contenedores (reinicios acumulados)",
       "type": "timeseries"
     }
   ],

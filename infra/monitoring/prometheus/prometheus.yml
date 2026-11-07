@@ -10,13 +10,17 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: windows_exporter
+  - job_name: node_exporter
     static_configs:
-      - targets: ['host.docker.internal:9188']
+      - targets: ['node-exporter:9100']
 
   - job_name: cadvisor
     static_configs:
       - targets: ['cadvisor:8080']
+
+  - job_name: docker
+    static_configs:
+      - targets: ['docker-exporter:9189']
 
   - job_name: postgres_exporter
     static_configs:
@@ -29,4 +33,4 @@ scrape_configs:
       target: ["http://host.docker.internal:3100/api/health"]
     static_configs:
       - targets:
-          - blackbox:9115
+          - blackbox-exporter:9115

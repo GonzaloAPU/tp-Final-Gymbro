@@ -35,14 +35,48 @@ services:
     networks:
       - gymbro-monitoring
 
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: gymbro-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - gymbro-monitoring
+
+  cadvisor-layerdb-init:
+    image: alpine:3.20
+    container_name: gymbro-cadvisor-layerdb-init
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - "rm -rf /layerdb/* && for d in /ro-overlayfs/*/; do id=$$(basename $$d); mkdir -p /layerdb/$$id; printf '%s' \"$$id\" > /layerdb/$$id/mount-id; done && echo 'layerdb generated'"
+    volumes:
+      - /var/lib/docker/rootfs/overlayfs:/ro-overlayfs:ro
+      - cadvisor_layerdb:/layerdb
+    networks:
+      - gymbro-monitoring
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: gymbro-cadvisor
     restart: unless-stopped
+    depends_on:
+      cadvisor-layerdb-init:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
     volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - cadvisor_layerdb:/var/lib/docker/image/overlayfs/layerdb/mounts:ro
+    cgroup: host
     networks:
       - gymbro-monitoring
 
@@ -51,7 +85,7 @@ services:
     container_name: gymbro-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE:-postgresql://smartgymbro_tp:smartgymbro_tp@host.docker.internal:55433/smartgymbro_tp?sslmode=disable}
+      DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE}
     ports:
       - "9187:9187"
     networks:
@@ -68,9 +102,23 @@ services:
     networks:
       - gymbro-monitoring
 
+  docker-exporter:
+    image: python:3.12-alpine
+    container_name: gymbro-docker-exporter
+    restart: unless-stopped
+    volumes:
+      - ./docker-stats-exporter:/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["python3", "/app/exporter.py"]
+    ports:
+      - "9189:9189"
+    networks:
+      - gymbro-monitoring
+
 volumes:
   prometheus_data:
   grafana_data:
+  cadvisor_layerdb:
 
 networks:
   gymbro-monitoring:
