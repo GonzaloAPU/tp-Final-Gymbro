@@ -9,6 +9,8 @@ services:
       MYSQL_PASSWORD: mantis_password_seguro
     volumes:
       - mantis_db_data:/var/lib/mysql
+    networks:
+      - gymbro-net
     restart: always
 
   mantis-web:
@@ -24,7 +26,13 @@ services:
       MANTIS_DB_NAME: bugtracker
     depends_on:
       - mantis-db
+    networks:
+      - gymbro-net
     restart: always
 
 volumes:
   mantis_db_data:
+
+networks:
+  gymbro-net:
+    external: true
