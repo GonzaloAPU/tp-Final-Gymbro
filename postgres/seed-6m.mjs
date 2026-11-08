@@ -1,8 +1,8 @@
 /**
- * Inyección masiva de 6.000.000 de registros
+ * Inyección masiva de 6.000.000 de registros sintéticos realistas.
  * 
  * Arquitectura:
- * 1. Tabla Maestra: 20.000 usuarios en gymbro.usuarios.
+ * 1. Tabla Maestra: 20.000 usuarios en gymbro.usuarios 
  * 2. Tabla de Movimiento: 6.000.000 de pesajes en gymbro.historial_peso_corporal
  *    distribuidos de forma equitativa (300 pesajes por usuario a lo largo de 2 años).
  */
@@ -14,7 +14,7 @@ const { sequelize, closeDatabase } = await import('../backend/src/db.js');
 
 async function generateBenchmarkData() {
   console.log('=================================================================');
-  console.log('SMARTGYMBRO - INYECCION MASIVA DISTRIBUIDA (6.000.000 FILAS)');
+  console.log('SMARTGYMBRO - INYECCION MASIVA CON DATOS REALISTAS (6.000.000 FILAS)');
   console.log('=================================================================\n');
 
   try {
@@ -30,33 +30,51 @@ async function generateBenchmarkData() {
     `);
 
     if (userCountBefore[0].total < 20000) {
-      console.log('Generando 20.000 usuarios sinteticos en gymbro.usuarios...');
+      console.log('Generando 20.000 usuarios con nombres, gimnasios y disciplinas reales...');
       const userStart = Date.now();
+      
       await sequelize.query(`
         INSERT INTO gymbro.usuarios (
-          id, correo_electronico, hash_contrasena, nombre, objetivo, altura_cm, participa_ranking, fecha_creacion, fecha_actualizacion
+          id, correo_electronico, hash_contrasena, nombre, objetivo, altura_cm, nombre_gimnasio, disciplina, generaciones_ia_semana, participa_ranking, fecha_creacion, fecha_actualizacion
         )
         SELECT 
           gen_random_uuid(),
-          'atleta_' || s || '@smartgymbro.com',
+          LOWER(
+            (ARRAY['lucas', 'mateo', 'santiago', 'nicolas', 'joaquin', 'facundo', 'martin', 'tomas', 'ignacio', 'gonzalo',
+                   'valentina', 'camila', 'sofia', 'martina', 'lucia', 'julieta', 'florencia', 'milagros', 'agustina', 'paula'])[1 + (s % 20)]
+            || '.' ||
+            (ARRAY['gonzalez', 'rodriguez', 'gomez', 'fernandez', 'lopez', 'diaz', 'martinez', 'perez', 'garcia', 'sanchez',
+                   'romero', 'sosa', 'alvarez', 'torres', 'ruiz', 'ramirez', 'flores', 'benitez', 'acosta', 'medina'])[1 + ((s / 20) % 20)]
+            || '_' || s || '@smartgymbro.com'
+          ),
           '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-          'Atleta ' || s,
-          (ARRAY['HIPERTROFIA', 'FUERZA', 'RESISTENCIA', 'PERDIDA_GRASA'])[1 + (s % 4)],
-          155 + (s % 40),
-          (s % 2 = 0),
+          (ARRAY['Lucas', 'Mateo', 'Santiago', 'Nicolás', 'Joaquín', 'Facundo', 'Martín', 'Tomás', 'Ignacio', 'Gonzalo',
+                 'Valentina', 'Camila', 'Sofía', 'Martina', 'Lucía', 'Julieta', 'Florencia', 'Milagros', 'Agustina', 'Paula'])[1 + (s % 20)] 
+          || ' ' || 
+          (ARRAY['González', 'Rodríguez', 'Gómez', 'Fernández', 'López', 'Díaz', 'Martínez', 'Pérez', 'García', 'Sánchez',
+                 'Romero', 'Sosa', 'Álvarez', 'Torres', 'Ruiz', 'Ramírez', 'Flores', 'Benítez', 'Acosta', 'Medina'])[1 + ((s / 20) % 20)],
+          (ARRAY['HIPERTROFIA', 'FUERZA_MAXIMA', 'PERDIDA_GRASA', 'RESISTENCIA', 'SALUD_GENERAL', 'RECOMPOSICION_CORPORAL'])[1 + (s % 6)],
+          155 + (s % 42),
+          (ARRAY['Smart Gym Palermo', 'Iron Paradise Recoleta', 'GymBro Belgrano', 'Megatlon Centro', 
+                 'SportClub Almagro', 'PowerFit Caballito', 'Olympus San Telmo', 'Titan Gym Flores', 
+                 'CrossFit Barracas', 'Fuerza Pura Villa Urquiza'])[1 + (s % 10)],
+          (ARRAY['Powerlifting', 'Bodybuilding', 'Crossfit', 'Calistenia', 'Fitness Funcional', 'Halterofilia', 'Acondicionamiento General'])[1 + (s % 7)],
+          (s % 4),
+          (s % 3 != 0),
           NOW() - ((s % 730) || ' days')::interval,
           NOW()
         FROM generate_series(1, 20000) AS s
         ON CONFLICT (correo_electronico) DO NOTHING;
       `);
+
       const userSeconds = ((Date.now() - userStart) / 1000).toFixed(2);
-      console.log(`[OK] 20.000 usuarios creados exitosamente en ${userSeconds} segundos.`);
+      console.log(`[OK] 20.000 usuarios realistas creados exitosamente en ${userSeconds} segundos.`);
     } else {
       console.log(`[INFO] La tabla de usuarios ya cuenta con ${userCountBefore[0].total.toLocaleString('es-AR')} usuarios.`);
     }
 
     // -----------------------------------------------------------------
-    // 2. POBLAR TABLA DE MOVIMIENTO (6.000.000 DISTRIBUIDOS)
+    // 2. POBLAR TABLA DE MOVIMIENTO (6.000.000)
     // -----------------------------------------------------------------
     console.log('\n[2/2] Verificando tabla de movimiento (historial_peso_corporal)...');
     const [countResult] = await sequelize.query(`
@@ -74,7 +92,7 @@ async function generateBenchmarkData() {
 
       const startTime = Date.now();
 
-      // 20.000 usuarios x 300 series = 6.000.000 filas con fechas correlativas en 2 años
+      // 20.000 usuarios x 300 pesajes = 6.000.000 filas correlativas a lo largo de 2 años
       await sequelize.query(`
         INSERT INTO gymbro.historial_peso_corporal (id, usuario_id, peso_kg, fecha_registro)
         SELECT 
@@ -95,7 +113,7 @@ async function generateBenchmarkData() {
     }
 
     // -----------------------------------------------------------------
-    // 3. METRICAS TECNICAS 
+    // 3. METRICAS TECNICAS
     // -----------------------------------------------------------------
     console.log('\n=================================================================');
     console.log('METRICAS TECNICAS');
