@@ -10,19 +10,8 @@ echo =====================================================================
 echo.
 
 :: Detectar directorio raiz del proyecto
-cd /d "%~dp0"
-if exist "postgres\seed-6m.mjs" (
-    set "ROOT_DIR=%CD%"
-) else (
-    if exist "seed-6m.mjs" (
-        cd ..
-        set "ROOT_DIR=%CD%"
-    ) else (
-        echo [ERROR] No se pudo encontrar el directorio del proyecto.
-        pause
-        exit /b 1
-    )
-)
+for %%I in ("%~dp0..") do set "ROOT_DIR=%%~fI"
+cd /d "%ROOT_DIR%"
 
 :: 1. Verificar si Docker esta corriendo
 echo [1/5] Verificando estado de Docker Desktop...
@@ -41,7 +30,7 @@ echo.
 
 :: 2. Levantar contenedor PostgreSQL si no esta activo
 echo [2/5] Levantando servicios en Docker (PostgreSQL 17 + pgAdmin)...
-docker compose -f "%ROOT_DIR%\postgres\compose.yaml" up -d
+docker compose --env-file "%ROOT_DIR%\postgres\.env" -f "%ROOT_DIR%\postgres\compose.yaml" up -d
 if %errorlevel% neq 0 (
     color 0C
     echo [ERROR] Fallo al levantar los contenedores con docker compose.
