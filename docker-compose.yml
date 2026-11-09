@@ -1,25 +1,82 @@
 services:
-  # 1. Base de datos PostgreSQL
+  # 1. Base de datos PostgreSQL Primaria (Master)
   postgres:
     image: postgres:17-alpine
-    container_name: gymbro-postgres
+    container_name: gymbro-postgres-primary
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+      - "-c"
+      - "hot_standby=on"
     environment:
-      POSTGRES_DB: smartgymbro_tp
-      POSTGRES_USER: smartgymbro_tp
-      POSTGRES_PASSWORD: smartgymbro_tp
+      POSTGRES_DB: ${POSTGRES_DB:-smartgymbro_tp}
+      POSTGRES_USER: ${POSTGRES_USER:-smartgymbro_tp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
     ports:
-      - "55433:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/sql:/docker-entrypoint-initdb.d:ro
+      - ./postgres/sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./postgres/sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+      - ./postgres/sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U smartgymbro_tp -d smartgymbro_tp" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartgymbro_tp} -d ${POSTGRES_DB:-smartgymbro_tp}" ]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
+      gymbro-net:
+        aliases:
+          - postgres
+          - postgres-primary
+          - gymbro-postgres-primary
+
+  # 1.1 Nodo Standby (Replica Streaming)
+  postgres-replica:
+    image: postgres:17-alpine
+    container_name: gymbro-postgres-replica
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-55434}:5432"
+    environment:
+      PGUSER: ${POSTGRES_USER:-smartgymbro_tp}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-admin123}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    networks:
+      gymbro-net:
+        aliases:
+          - postgres-replica
+          - gymbro-postgres-replica
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 1.2 Servicio Daemon de Backups Automaticos
+  postgres-backup:
+    image: postgres:17-alpine
+    container_name: gymbro-postgres-backup
+    restart: unless-stopped
+    command: ["sh", "-c", "chmod +x /scripts/backup-cron.sh && /scripts/backup-cron.sh"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartgymbro_tp}
+      POSTGRES_USER: ${POSTGRES_USER:-smartgymbro_tp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      POSTGRES_HOST: postgres-primary
+    volumes:
+      - ./postgres/backups:/backups
+      - ./postgres/scripts:/scripts:ro
+    networks:
       - gymbro-net
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # 2. Administrador pgAdmin 4
   pgadmin:
@@ -27,12 +84,13 @@ services:
     container_name: gymbro-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@smartgymbro.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-pgadmin_secure_pass_2026}
     ports:
-      - "5051:80"
+      - "127.0.0.1:${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./postgres/servers.json:/pgadmin4/servers.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,8 +113,8 @@ services:
       - DB_CONNECTION_MODE=LOCAL
       - DB_SCHEMA=gymbro
       - DB_NAMES_LANGUAGE=es
-      - DATABASE_URL=postgres://smartgymbro_tp:smartgymbro_tp@postgres:5432/smartgymbro_tp
-      - JWT_SECRET=clave_secreta_super_segura_de_produccion_32_caracteres_minimo
+      - DATABASE_URL=postgres://${POSTGRES_USER:-smartgymbro_tp}:${POSTGRES_PASSWORD:-admin123}@postgres:5432/${POSTGRES_DB:-smartgymbro_tp}
+      - JWT_SECRET=${JWT_SECRET:-super_secreto_local_smartgymbro_2026_seguro_mas_de_32_chars}
       - FRONTEND_URL=http://localhost:4300
     depends_on:
       postgres:
@@ -79,7 +137,7 @@ services:
     networks:
       - gymbro-net
 
-  # 5. Servidor Documental Nextcloud (Autoconfiguración por Hooks occ sin subir volúmenes a Git)
+  # 5. Servidor Documental Nextcloud (Hooks occ automáticos)
   nextcloud:
     image: nextcloud:29-apache
     container_name: gymbro-nextcloud
@@ -102,11 +160,47 @@ services:
     networks:
       - gymbro-net
 
+  # 6. Base de Datos Mantis Bug Tracker (MySQL 5.7)
+  mantis-db:
+    image: mysql:5.7
+    container_name: mantis-mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_seguro
+      MYSQL_DATABASE: ${MANTIS_DB_NAME:-bugtracker}
+      MYSQL_USER: ${MANTIS_DB_USER:-mantis_user}
+      MYSQL_PASSWORD: ${MANTIS_DB_PASSWORD:-mantis_password_seguro}
+    volumes:
+      - mantis_db_data:/var/lib/mysql
+    networks:
+      - gymbro-net
+
+  # 6.1 Panel Web Mantis Bug Tracker
+  mantis-web:
+    image: vimagick/mantisbt:latest
+    container_name: mantis-web-app
+    restart: unless-stopped
+    ports:
+      - "${MANTIS_PORT:-8089}:80"
+    environment:
+      MANTIS_DB_TYPE: mysqli
+      MANTIS_DB_HOST: mantis-db
+      MANTIS_DB_USER: ${MANTIS_DB_USER:-mantis_user}
+      MANTIS_DB_PASSWORD: ${MANTIS_DB_PASSWORD:-mantis_password_seguro}
+      MANTIS_DB_NAME: ${MANTIS_DB_NAME:-bugtracker}
+    depends_on:
+      - mantis-db
+    networks:
+      - gymbro-net
+
 volumes:
   postgres_data:
+  postgres_replica_data:
   pgadmin_data:
   nextcloud_data:
+  mantis_db_data:
 
 networks:
   gymbro-net:
+    name: gymbro-net
     driver: bridge
