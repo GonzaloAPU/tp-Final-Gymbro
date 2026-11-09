@@ -1,0 +1,22 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "SmartGymBro Primario (Master)",
+      "Group": "SmartGymBro Cluster",
+      "Host": "postgres-primary",
+      "Port": 5432,
+      "MaintenanceDB": "smartgymbro_tp",
+      "Username": "smartgymbro_tp",
+      "SSLMode": "prefer"
+    },
+    "2": {
+      "Name": "SmartGymBro Replica (Standby)",
+      "Group": "SmartGymBro Cluster",
+      "Host": "postgres-replica",
+      "Port": 5432,
+      "MaintenanceDB": "smartgymbro_tp",
+      "Username": "smartgymbro_tp",
+      "SSLMode": "prefer"
+    }
+  }
+}

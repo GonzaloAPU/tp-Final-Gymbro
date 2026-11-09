@@ -1,42 +1,120 @@
 services:
+  # NODO PRIMARIO (MASTER)
   postgres-primary:
     image: postgres:17-alpine
     container_name: gymbro-postgres-primary
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=10"
+      - "-c"
+      - "max_replication_slots=10"
+      - "-c"
+      - "hot_standby=on"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      # SEGURIDAD: 127.0.0.1 aísla el puerto a la máquina local (Loopback).
-      # Usa el puerto acordado 55433 para evitar colisiones.
+      # Puerto primario 55433 aislado en loopback
       - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
     volumes:
-      # Persistencia de datos físicos en el host
       - postgres_tp_data:/var/lib/postgresql/data
-      # Scripts de inicio automático: crea esquema gymbro, 16 tablas y 190 ejercicios
+      - ./backups:/backups:ro
       - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
       - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+      - ./sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
     networks:
-      - gymbro_network
+      gymbro_network:
+        aliases:
+          - postgres
+          - postgres-primary
+          - gymbro-postgres-primary
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+
+  # NODO STANDBY (REPLICA) 
+  postgres-replica:
+    image: postgres:17-alpine
+    container_name: gymbro-postgres-replica
+    restart: unless-stopped
+    ports:
+      # Puerto replica 55434 para consultas de lectura y failover
+      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-55434}:5432"
+    environment:
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    networks:
+      gymbro_network:
+        aliases:
+          - postgres-replica
+          - gymbro-postgres-replica
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+        echo '[REPLICA] Clonando cluster primario mediante pg_basebackup...';
+        until PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-replicator_password123} pg_basebackup -h postgres-primary -p 5432 -U ${POSTGRES_REPLICATION_USER:-replicator} -D /var/lib/postgresql/data -v -P -X stream -R --slot=standby_slot_1; do
+          echo '[REPLICA] Esperando disponibilidad del nodo primario...';
+          sleep 2;
+        done;
+        echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.auto.conf;
+        chown -R postgres:postgres /var/lib/postgresql/data;
+        chmod 700 /var/lib/postgresql/data;
+        echo '[REPLICA] Clonacion exitosa. Iniciando modo Hot Standby...';
+      fi;
+      exec gosu postgres postgres
+      "
+
+  # SERVICIO DE BACKUPS AUTOMATICOS (PG_DUMP PROGRAMADO)
+  postgres-backup:
+    image: postgres:17-alpine
+    container_name: gymbro-postgres-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres-primary
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup-cron.sh:/backup-cron.sh:ro
+    networks:
+      - gymbro_network
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      chmod +x /backup-cron.sh;
+      exec /backup-cron.sh
+      "
+
+  # PGADMIN 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: gymbro-pgadmin
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
-      # SEGURIDAD: pgAdmin accesible únicamente en local por el puerto 5051
       - "127.0.0.1:${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_tp_data:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/servers.json:ro
     networks:
       - gymbro_network
     depends_on:
@@ -51,5 +129,7 @@ networks:
 volumes:
   postgres_tp_data:
     name: smartgymbro_tp_postgres_data
+  postgres_replica_data:
+    name: smartgymbro_tp_postgres_replica_data
   pgadmin_tp_data:
     name: smartgymbro_tp_pgadmin_data
