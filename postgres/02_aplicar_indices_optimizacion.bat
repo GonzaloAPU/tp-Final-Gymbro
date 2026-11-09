@@ -9,19 +9,8 @@ echo =====================================================================
 echo.
 
 :: Detectar directorio raiz del proyecto
-cd /d "%~dp0"
-if exist "postgres\indices.sql" (
-    set "ROOT_DIR=%CD%"
-) else (
-    if exist "indices.sql" (
-        cd ..
-        set "ROOT_DIR=%CD%"
-    ) else (
-        echo [ERROR] No se pudo encontrar el directorio del proyecto.
-        pause
-        exit /b 1
-    )
-)
+for %%I in ("%~dp0..") do set "ROOT_DIR=%%~fI"
+cd /d "%ROOT_DIR%"
 
 :: 1. Verificar si Docker esta corriendo
 echo [1/3] Verificando estado de Docker Desktop...
