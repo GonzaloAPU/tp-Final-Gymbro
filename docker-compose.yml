@@ -47,6 +47,7 @@ services:
     environment:
       PGUSER: ${POSTGRES_USER:-smartgymbro_tp}
       PGPASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
     volumes:
       - postgres_replica_data:/var/lib/postgresql/data
     networks:
@@ -57,26 +58,41 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    entrypoint: >
+      sh -c "
+      if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+        echo '[REPLICA] Clonando cluster primario mediante pg_basebackup...';
+        until PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-replicator_password123} pg_basebackup -h postgres-primary -p 5432 -U ${POSTGRES_REPLICATION_USER:-replicator} -D /var/lib/postgresql/data -v -P -X stream -R --slot=standby_slot_1; do
+          echo '[REPLICA] Esperando disponibilidad del nodo primario...';
+          sleep 2;
+        done;
+        echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.auto.conf;
+        chown -R postgres:postgres /var/lib/postgresql/data;
+        chmod 700 /var/lib/postgresql/data;
+        echo '[REPLICA] Clonacion exitosa. Iniciando modo Hot Standby...';
+      fi;
+      exec gosu postgres postgres
+      "
 
   # 1.2 Servicio Daemon de Backups Automaticos
   postgres-backup:
     image: postgres:17-alpine
     container_name: gymbro-postgres-backup
     restart: unless-stopped
-    command: ["sh", "-c", "chmod +x /scripts/backup-cron.sh && /scripts/backup-cron.sh"]
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-smartgymbro_tp}
-      POSTGRES_USER: ${POSTGRES_USER:-smartgymbro_tp}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
-      POSTGRES_HOST: postgres-primary
+      PGHOST: postgres-primary
+      PGUSER: ${POSTGRES_USER:-smartgymbro_tp}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      PGDATABASE: ${POSTGRES_DB:-smartgymbro_tp}
     volumes:
       - ./postgres/backups:/backups
-      - ./postgres/scripts:/scripts:ro
+      - ./postgres/scripts/backup-cron.sh:/backup-cron.sh:ro
     networks:
       - gymbro-net
     depends_on:
       postgres:
         condition: service_healthy
+    entrypoint: ["sh", "/backup-cron.sh"]
 
   # 2. Administrador pgAdmin 4
   pgadmin:

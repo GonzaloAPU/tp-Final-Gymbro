@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartGymBro - Guía Rápida de Despliegue Local</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.5cm;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #1e293b;
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      font-size: 13px;
+    }
+    .header {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #1e3a8a;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header .subtitle {
+      color: #64748b;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .badge-container {
+      margin-top: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      margin-right: 6px;
+    }
+    .step-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #2563eb;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .step-card h3 {
+      margin: 0 0 6px 0;
+      color: #0f172a;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-card p {
+      margin: 0 0 6px 0;
+      color: #475569;
+    }
+    .code-box {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      margin: 6px 0;
+      word-break: break-all;
+    }
+    .click-target {
+      background: #eff6ff;
+      border: 1px dashed #3b82f6;
+      color: #1d4ed8;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      font-family: Consolas, monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    .alert-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin: 12px 0;
+      font-size: 12px;
+      color: #92400e;
+    }
+    .footer {
+      margin-top: 25px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🚀 SmartGymBro — Guía Rápida de Despliegue e Integración</h1>
+    <div class="subtitle">Práctica Integradora Final (HIA 2026) · Manual Operativo para el Equipo</div>
+    <div class="badge-container">
+      <span class="badge">DevOps: Aldo Dante</span>
+      <span class="badge">Rama: feature/setup-unificado</span>
+      <span class="badge">Docker Compose Maestro</span>
+    </div>
+  </div>
+
+  <div class="alert-box">
+    <strong>⚠️ Requisito previo fundamental:</strong> Asegurarse de tener <strong>Docker Desktop</strong> iniciado y corriendo en la máquina antes de ejecutar los comandos.
+  </div>
+
+  <div class="step-card">
+    <h3>1️⃣ Clonar o actualizar el repositorio</h3>
+    <p>Abrí una terminal (PowerShell, Git Bash o CMD) y posicionate en la rama unificada:</p>
+    <div class="code-box">git clone https://github.com/GonzaloAPU/tp-Final-Gymbro.git<br>cd tp-Final-Gymbro<br>git checkout feature/setup-unificado</div>
+    <p><small>(O <code>git checkout develop</code> una vez que el PR sea aprobado).</small></p>
+  </div>
+
+  <div class="step-card">
+    <h3>2️⃣ Generar los archivos de entorno (1 Clic)</h3>
+    <p>Desde el Explorador de Windows, hacé doble clic en la raíz del proyecto sobre:</p>
+    <div><span class="click-target">👉 00_preparar_entorno.bat</span></div>
+    <p><small>Crea y sincroniza automáticamente todos los archivos <code>.env</code> con las contraseñas estándar del equipo (<code>admin123</code>), sin exponer secretos en Git.</small></p>
+  </div>
+
+  <div class="step-card">
+    <h3>3️⃣ Levantar el stack completo de contenedores</h3>
+    <p>En la consola parada en la raíz del proyecto, ejecutá:</p>
+    <div class="code-box">docker compose up -d</div>
+    <p><small>Levanta en paralelo: Frontend, Backend API, PostgreSQL Primario, Réplica Streaming, Backups automáticos, pgAdmin, Nextcloud y Mantis Bug Tracker en la red unificada <code>gymbro-net</code>.</small></p>
+  </div>
+
+  <div class="step-card">
+    <h3>4️⃣ Poblar Base de Datos, Índices e Incidencias (3 Clics)</h3>
+    <p>Hacé doble clic en los siguientes ejecutables en orden:</p>
+    <p><strong>A. Carga masiva (Punto 4):</strong> <span class="click-target">postgres\01_poblar_base_datos.bat</span><br>
+    <small>Puebla 20.000 usuarios atletas y 6.000.000 de pesajes en memoria. <em>(Toma ~9 minutos; no cerrar la ventana hasta que finalice)</em>.</small></p>
+    
+    <p><strong>B. Optimización SQL (Punto 5):</strong> <span class="click-target">postgres\02_aplicar_indices_optimizacion.bat</span><br>
+    <small>Aplica los 8 índices B-Tree, parciales y de cobertura en ~5 segundos.</small></p>
+
+    <p><strong>C. Incidencias Mantis (Punto 11):</strong> <span class="click-target">infra\incidencias\01_restaurar_mantis.bat</span><br>
+    <small>Restaura el backup con las 10 incidencias de auditoría cargadas por Rodrigo.</small></p>
+  </div>
+
+  <div class="step-card">
+    <h3>5️⃣ Levantar Monitoreo (Punto 10)</h3>
+    <p>Para encender el panel de métricas con Prometheus y Grafana:</p>
+    <div class="code-box">docker compose -f infra/monitoring/compose.yaml up -d</div>
+  </div>
+
+  <h3>🌐 Panel de Accesos Locales y Credenciales</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Servicio</th>
+        <th>URL en Navegador</th>
+        <th>Credenciales de Acceso</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>App Web (Frontend)</strong></td>
+        <td><code>http://localhost:4300</code></td>
+        <td>Acceso libre (Angular 22 + Nginx)</td>
+      </tr>
+      <tr>
+        <td><strong>API Backend</strong></td>
+        <td><code>http://localhost:3100/api/health</code></td>
+        <td>Estado del servidor (Node.js 26)</td>
+      </tr>
+      <tr>
+        <td><strong>Grafana (Métricas)</strong></td>
+        <td><code>http://localhost:3001</code></td>
+        <td>Usuario: <code>admin</code> | Clave: <code>admin</code></td>
+      </tr>
+      <tr>
+        <td><strong>Prometheus</strong></td>
+        <td><code>http://localhost:9090</code></td>
+        <td>Targets en <code>Status -> Targets</code></td>
+      </tr>
+      <tr>
+        <td><strong>Mantis Bug Tracker</strong></td>
+        <td><code>http://localhost:8089</code></td>
+        <td>Usuario: <code>administrator</code> / <code>root</code></td>
+      </tr>
+      <tr>
+        <td><strong>Nextcloud</strong></td>
+        <td><code>http://localhost:8081</code></td>
+        <td>Usuario: <code>admin</code> | Clave: <code>smartgymbro_tp</code></td>
+      </tr>
+      <tr>
+        <td><strong>pgAdmin 4</strong></td>
+        <td><code>http://localhost:5051</code></td>
+        <td><code>admin@smartgymbro.com</code> | <code>pgadmin_secure_pass_2026</code></td>
+      </tr>
+      <tr>
+        <td><strong>PostgreSQL Clúster</strong></td>
+        <td>Primario: <code>:55433</code> · Réplica: <code>:55434</code></td>
+        <td>Usuario: <code>smartgymbro_tp</code> | Clave: <code>admin123</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    SmartGymBro · Infraestructura y DevOps probados en Windows 10/11 con Docker Desktop y WSL2 · Noviembre 2026
+  </div>
+
+</body>
+</html>

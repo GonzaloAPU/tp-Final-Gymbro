@@ -28,14 +28,18 @@ if %errorlevel% neq 0 (
 echo [OK] Docker esta en ejecucion.
 echo.
 
-:: 2. Levantar contenedor PostgreSQL si no esta activo
-echo [2/5] Levantando servicios en Docker (PostgreSQL 17 + pgAdmin)...
-docker compose --env-file "%ROOT_DIR%\postgres\.env" -f "%ROOT_DIR%\postgres\compose.yaml" up -d
+:: 2. Verificar o levantar contenedor PostgreSQL
+echo [2/5] Verificando estado de PostgreSQL 17...
+docker exec gymbro-postgres-primary pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [OK] PostgreSQL 17 - gymbro-postgres-primary - ya esta activo y saludable en el puerto 55433.
+    goto pg_ready
+)
+
+echo Levantando servicios en Docker [PostgreSQL 17 + pgAdmin]...
+docker compose up -d postgres
 if %errorlevel% neq 0 (
-    color 0C
-    echo [ERROR] Fallo al levantar los contenedores con docker compose.
-    pause
-    exit /b 1
+    docker compose --env-file "%ROOT_DIR%\postgres\.env" -f "%ROOT_DIR%\postgres\compose.yaml" up -d
 )
 
 :: Esperar a que PostgreSQL este listo
@@ -48,15 +52,16 @@ if %errorlevel% neq 0 (
     goto wait_pg
 )
 echo [OK] PostgreSQL 17 esta listo y saludable en el puerto 55433.
+
+:pg_ready
 echo.
 
 :: 3. Verificar dependencias de Node.js en backend
 echo [3/5] Verificando dependencias de Node.js...
-if not exist "%ROOT_DIR%\backend\node_modules" (
-    echo Instalando dependencias en backend...
-    cd /d "%ROOT_DIR%\backend"
-    call npm install
+if not exist "%ROOT_DIR%\node_modules" (
+    echo Instalando dependencias del proyecto...
     cd /d "%ROOT_DIR%"
+    call npm install
 )
 echo [OK] Dependencias de Node.js verificadas.
 echo.
