@@ -95,11 +95,7 @@ services:
     depends_on:
       postgres-primary:
         condition: service_healthy
-    entrypoint: >
-      sh -c "
-      chmod +x /backup-cron.sh;
-      exec /backup-cron.sh
-      "
+    entrypoint: ["sh", "/backup-cron.sh"]
 
   # PGADMIN 
   pgadmin:
