@@ -1,73 +1,39 @@
+SET search_path TO gymbro, public;
+
 -- ====================================================================
--- SCRIPT DE OPTIMIZACION SQL Y BENCHMARKING (PUNTO 5)
--- Base de Datos: smartgymbro_tp (PostgreSQL 17 Alpine en Docker)
--- ====================================================================
--- CONSULTA 1: Historial Reciente de Peso de un Atleta (Perfil y Grafico)
--- Uso: Pantalla de Progreso (curva de peso reciente con LIMIT 30).
+-- CONSULTA 1: Historial de Series de un Ejercicio en Sala
+-- Uso: Pantalla activa de entrenamiento del atleta. Muestra las series completadas
+--      de un ejercicio realizado ordenadas cronologicamente por numero de serie.
 -- ====================================================================
 
--- 1. Medicion Inicial (ANTES de Optimizar - Forzando Sequential Scan):
+-- 1. Medicion Inicial (ANTES de Optimizar):
 SET enable_indexscan = off;
 SET enable_bitmapscan = off;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT id, usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-ORDER BY fecha_registro DESC
-LIMIT 30;
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, descanso_real_segundos
+FROM gymbro.series_realizadas
+WHERE ejercicio_realizado_id = (SELECT id FROM gymbro.ejercicios_realizados LIMIT 1)
+ORDER BY numero_serie ASC;
 
 -- 2. Solucion de Ingenieria (Creacion de Indice B-Tree Compuesto):
 SET enable_indexscan = on;
 SET enable_bitmapscan = on;
 
-CREATE INDEX IF NOT EXISTS idx_peso_usuario_fecha_desc
-ON gymbro.historial_peso_corporal (usuario_id, fecha_registro DESC);
+CREATE INDEX IF NOT EXISTS idx_series_ejercicio_set
+ON gymbro.series_realizadas (ejercicio_realizado_id, numero_serie ASC);
 
--- 3. Medicion Final (DESPUES de Optimizar - Index Scan):
+-- 3. Medicion Final (DESPUES de Optimizar):
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT id, usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-ORDER BY fecha_registro DESC
-LIMIT 30;
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, descanso_real_segundos
+FROM gymbro.series_realizadas
+WHERE ejercicio_realizado_id = (SELECT id FROM gymbro.ejercicios_realizados LIMIT 1)
+ORDER BY numero_serie ASC;
 
 
 -- ====================================================================
--- CONSULTA 2: Rango Temporal de Evolucion Fisica (Ultimos 90 Dias)
--- Uso: Analisis trimestral de progreso corporal de un socio especifico.
--- ====================================================================
-
--- 1. Medicion Inicial (ANTES):
-SET enable_indexscan = off;
-SET enable_bitmapscan = off;
-
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-  AND fecha_registro >= NOW() - INTERVAL '90 days'
-ORDER BY fecha_registro ASC;
-
--- 2. Solucion de Ingenieria (Indice B-Tree Compuesto por Clave y Fecha ASC):
-SET enable_indexscan = on;
-SET enable_bitmapscan = on;
-
-CREATE INDEX IF NOT EXISTS idx_peso_usuario_fecha_asc
-ON gymbro.historial_peso_corporal (usuario_id, fecha_registro ASC);
-
--- 3. Medicion Final (DESPUES):
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-  AND fecha_registro >= NOW() - INTERVAL '90 days'
-ORDER BY fecha_registro ASC;
-
-
--- ====================================================================
--- CONSULTA 3: Resumen Estadistico y Agregacion (Min, Max, Promedio)
--- Uso: Ficha medica del socio y metricas consolidadas en el perfil.
+-- CONSULTA 2: Series Pesadas y Sobrecarga Progresiva (Rango Compuesto)
+-- Uso: Analisis de progreso de fuerza. Filtra series de alta exigencia (peso >= 90kg y reps >= 8).
 -- ====================================================================
 
 -- 1. Medicion Inicial (ANTES):
@@ -75,100 +41,31 @@ SET enable_indexscan = off;
 SET enable_bitmapscan = off;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT usuario_id,
-       COUNT(*) AS total_pesajes,
-       MIN(peso_kg) AS peso_minimo,
-       MAX(peso_kg) AS peso_maximo,
-       ROUND(AVG(peso_kg)::numeric, 2) AS peso_promedio
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-GROUP BY usuario_id;
-
--- 2. Solucion de Ingenieria (Covering Index con Clausula INCLUDE):
-SET enable_indexscan = on;
-SET enable_bitmapscan = on;
-
-CREATE INDEX IF NOT EXISTS idx_peso_usuario_covering
-ON gymbro.historial_peso_corporal (usuario_id) INCLUDE (peso_kg);
-
--- 3. Medicion Final (DESPUES):
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT usuario_id,
-       COUNT(*) AS total_pesajes,
-       MIN(peso_kg) AS peso_minimo,
-       MAX(peso_kg) AS peso_maximo,
-       ROUND(AVG(peso_kg)::numeric, 2) AS peso_promedio
-FROM gymbro.historial_peso_corporal
-WHERE usuario_id = '20f66d35-4381-40cd-9378-42fbf1bae143'
-GROUP BY usuario_id;
-
-
--- ====================================================================
--- CONSULTA 4: Socios en Categoria Pesada (> 95 kg en Ultimos 60 Dias)
--- Uso: Clasificacion deportiva en torneos de levantamiento y JOIN con usuarios.
--- ====================================================================
-
--- 1. Medicion Inicial (ANTES):
-SET enable_indexscan = off;
-SET enable_bitmapscan = off;
-
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT u.nombre, u.nombre_gimnasio, u.disciplina, h.peso_kg, h.fecha_registro
-FROM gymbro.historial_peso_corporal h
-JOIN gymbro.usuarios u ON u.id = h.usuario_id
-WHERE h.peso_kg > 95.0
-  AND h.fecha_registro >= NOW() - INTERVAL '60 days';
-
--- 2. Solucion de Ingenieria (Indice Parcial Filtrado):
-SET enable_indexscan = on;
-SET enable_bitmapscan = on;
-
-CREATE INDEX IF NOT EXISTS idx_peso_parcial_categoria_pesada
-ON gymbro.historial_peso_corporal (fecha_registro, usuario_id, peso_kg)
-WHERE peso_kg > 95.0;
-
--- 3. Medicion Final (DESPUES):
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT u.nombre, u.nombre_gimnasio, u.disciplina, h.peso_kg, h.fecha_registro
-FROM gymbro.historial_peso_corporal h
-JOIN gymbro.usuarios u ON u.id = h.usuario_id
-WHERE h.peso_kg > 95.0
-  AND h.fecha_registro >= NOW() - INTERVAL '60 days';
-
-
--- ====================================================================
--- CONSULTA 5: Ultimo Pesaje Vigente de Cada Socio (DISTINCT ON LIMIT 50)
--- Uso: Tablero de recepcion del gimnasio para control de estado actual.
--- ====================================================================
-
--- 1. Medicion Inicial (ANTES):
-SET enable_indexscan = off;
-SET enable_bitmapscan = off;
-
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT DISTINCT ON (usuario_id) usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-ORDER BY usuario_id, fecha_registro DESC
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, fecha_finalizacion
+FROM gymbro.series_realizadas
+WHERE peso_kg >= 90.0 AND repeticiones >= 8
+ORDER BY fecha_finalizacion DESC
 LIMIT 50;
 
--- 2. Solucion de Ingenieria (Indice B-Tree Compuesto Ordenado):
+-- 2. Solucion de Ingenieria (Indice B-Tree Compuesto por Carga, Repeticiones y Fecha):
 SET enable_indexscan = on;
 SET enable_bitmapscan = on;
 
-CREATE INDEX IF NOT EXISTS idx_peso_usuario_fecha_desc
-ON gymbro.historial_peso_corporal (usuario_id, fecha_registro DESC);
+CREATE INDEX IF NOT EXISTS idx_series_peso_reps_fecha
+ON gymbro.series_realizadas (peso_kg DESC, repeticiones DESC, fecha_finalizacion DESC);
 
 -- 3. Medicion Final (DESPUES):
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT DISTINCT ON (usuario_id) usuario_id, peso_kg, fecha_registro
-FROM gymbro.historial_peso_corporal
-ORDER BY usuario_id, fecha_registro DESC
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, fecha_finalizacion
+FROM gymbro.series_realizadas
+WHERE peso_kg >= 90.0 AND repeticiones >= 8
+ORDER BY fecha_finalizacion DESC
 LIMIT 50;
 
 
 -- ====================================================================
--- CONSULTA 6: Tendencia Global Mensual de Peso (Agrupacion date_trunc)
--- Uso: Reporte gerencial de estacionalidad y evolucion de toda la cadena.
+-- CONSULTA 3: Resumen Estadistico y Volumen de Carga (Agregacion)
+-- Uso: Resumen de fin de ejercicio. Calcula total de series, volumen (kg*reps), max y promedio.
 -- ====================================================================
 
 -- 1. Medicion Inicial (ANTES):
@@ -176,30 +73,141 @@ SET enable_indexscan = off;
 SET enable_bitmapscan = off;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT date_trunc('month', fecha_registro) AS mes,
-       COUNT(*) AS registros_mes,
-       ROUND(AVG(peso_kg)::numeric, 2) AS promedio_mensual
-FROM gymbro.historial_peso_corporal
-WHERE fecha_registro >= NOW() - INTERVAL '365 days'
-GROUP BY date_trunc('month', fecha_registro)
-ORDER BY mes ASC;
+SELECT ejercicio_realizado_id,
+       COUNT(*) AS total_series,
+       SUM(peso_kg * repeticiones) AS volumen_total_kg,
+       MAX(peso_kg) AS peso_maximo,
+       ROUND(AVG(peso_kg)::numeric, 2) AS peso_promedio
+FROM gymbro.series_realizadas
+WHERE ejercicio_realizado_id = (SELECT id FROM gymbro.ejercicios_realizados LIMIT 1)
+GROUP BY ejercicio_realizado_id;
 
--- 2. Solucion de Ingenieria (Indice B-Tree en Fecha de Registro):
+-- 2. Solucion de Ingenieria (Covering Index con Clausula INCLUDE para Index Only Scan):
 SET enable_indexscan = on;
 SET enable_bitmapscan = on;
 
-CREATE INDEX IF NOT EXISTS idx_peso_fecha_registro
-ON gymbro.historial_peso_corporal (fecha_registro);
+CREATE INDEX IF NOT EXISTS idx_series_ejercicio_covering
+ON gymbro.series_realizadas (ejercicio_realizado_id) INCLUDE (peso_kg, repeticiones, numero_serie);
 
 -- 3. Medicion Final (DESPUES):
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT date_trunc('month', fecha_registro) AS mes,
-       COUNT(*) AS registros_mes,
-       ROUND(AVG(peso_kg)::numeric, 2) AS promedio_mensual
-FROM gymbro.historial_peso_corporal
-WHERE fecha_registro >= NOW() - INTERVAL '365 days'
-GROUP BY date_trunc('month', fecha_registro)
-ORDER BY mes ASC;
+SELECT ejercicio_realizado_id,
+       COUNT(*) AS total_series,
+       SUM(peso_kg * repeticiones) AS volumen_total_kg,
+       MAX(peso_kg) AS peso_maximo,
+       ROUND(AVG(peso_kg)::numeric, 2) AS peso_promedio
+FROM gymbro.series_realizadas
+WHERE ejercicio_realizado_id = (SELECT id FROM gymbro.ejercicios_realizados LIMIT 1)
+GROUP BY ejercicio_realizado_id;
+
+
+-- ====================================================================
+-- CONSULTA 4: Atletas de Elite y Series de Alta Intensidad (Carga >= 100 kg)
+-- Uso: Deteccion de series de atletas avanzados en los ultimos 60 dias.
+-- ====================================================================
+
+-- 1. Medicion Inicial (ANTES):
+SET enable_indexscan = off;
+SET enable_bitmapscan = off;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT sr.id, sr.ejercicio_realizado_id, sr.numero_serie, sr.peso_kg, sr.repeticiones, sr.fecha_finalizacion
+FROM gymbro.series_realizadas sr
+WHERE sr.peso_kg >= 100.0
+  AND sr.fecha_finalizacion >= NOW() - INTERVAL '60 days'
+ORDER BY sr.fecha_finalizacion DESC
+LIMIT 50;
+
+-- 2. Solucion de Ingenieria (Indice Parcial Filtrado WHERE peso_kg >= 100.0):
+SET enable_indexscan = on;
+SET enable_bitmapscan = on;
+
+CREATE INDEX IF NOT EXISTS idx_series_parcial_alta_carga
+ON gymbro.series_realizadas (fecha_finalizacion DESC, ejercicio_realizado_id, peso_kg)
+WHERE peso_kg >= 100.0;
+
+-- 3. Medicion Final (DESPUES):
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT sr.id, sr.ejercicio_realizado_id, sr.numero_serie, sr.peso_kg, sr.repeticiones, sr.fecha_finalizacion
+FROM gymbro.series_realizadas sr
+WHERE sr.peso_kg >= 100.0
+  AND sr.fecha_finalizacion >= NOW() - INTERVAL '60 days'
+ORDER BY sr.fecha_finalizacion DESC
+LIMIT 50;
+
+
+-- ====================================================================
+-- CONSULTA 5: Ventana Temporal y Monitoreo de Series Recientes (Ultimos 14 Dias)
+-- Uso: Dashboard de actividad operativa en tiempo real del gimnasio.
+-- ====================================================================
+
+-- 1. Medicion Inicial (ANTES):
+SET enable_indexscan = off;
+SET enable_bitmapscan = off;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, fecha_finalizacion
+FROM gymbro.series_realizadas
+WHERE fecha_finalizacion >= NOW() - INTERVAL '14 days'
+ORDER BY fecha_finalizacion DESC
+LIMIT 50;
+
+-- 2. Solucion de Ingenieria (Indice B-Tree en Fecha de Finalizacion DESC):
+SET enable_indexscan = on;
+SET enable_bitmapscan = on;
+
+CREATE INDEX IF NOT EXISTS idx_series_fecha_finalizacion
+ON gymbro.series_realizadas (fecha_finalizacion DESC);
+
+-- 3. Medicion Final (DESPUES):
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, ejercicio_realizado_id, numero_serie, peso_kg, repeticiones, fecha_finalizacion
+FROM gymbro.series_realizadas
+WHERE fecha_finalizacion >= NOW() - INTERVAL '14 days'
+ORDER BY fecha_finalizacion DESC
+LIMIT 50;
+
+
+-- ====================================================================
+-- CONSULTA 6: Volumen Total Acumulado por Ejercicio del Catalogo Oficial (JOIN)
+-- Uso: Reporte gerencial de ejercicios con mayor adherencia y tonelaje levantado.
+-- ====================================================================
+
+-- 1. Medicion Inicial (ANTES):
+SET enable_indexscan = off;
+SET enable_bitmapscan = off;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT e.nombre AS ejercicio,
+       COUNT(sr.id) AS total_series_ejecutadas,
+       ROUND(SUM(sr.peso_kg * sr.repeticiones)::numeric, 2) AS volumen_acumulado_kg
+FROM gymbro.series_realizadas sr
+JOIN gymbro.ejercicios_realizados er ON er.id = sr.ejercicio_realizado_id
+JOIN gymbro.ejercicios e ON e.id = er.ejercicio_id
+WHERE sr.fecha_finalizacion >= NOW() - INTERVAL '180 days'
+GROUP BY e.nombre
+ORDER BY volumen_acumulado_kg DESC
+LIMIT 10;
+
+-- 2. Solucion de Ingenieria (Indice B-Tree Compuesto en Clave Foranea de Ejercicios Realizados):
+SET enable_indexscan = on;
+SET enable_bitmapscan = on;
+
+CREATE INDEX IF NOT EXISTS idx_ejercicios_realizados_ejercicio_id
+ON gymbro.ejercicios_realizados (ejercicio_id, id);
+
+-- 3. Medicion Final (DESPUES):
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT e.nombre AS ejercicio,
+       COUNT(sr.id) AS total_series_ejecutadas,
+       ROUND(SUM(sr.peso_kg * sr.repeticiones)::numeric, 2) AS volumen_acumulado_kg
+FROM gymbro.series_realizadas sr
+JOIN gymbro.ejercicios_realizados er ON er.id = sr.ejercicio_realizado_id
+JOIN gymbro.ejercicios e ON e.id = er.ejercicio_id
+WHERE sr.fecha_finalizacion >= NOW() - INTERVAL '180 days'
+GROUP BY e.nombre
+ORDER BY volumen_acumulado_kg DESC
+LIMIT 10;
 
 
 -- ====================================================================
@@ -216,11 +224,11 @@ SELECT u.nombre, u.nombre_gimnasio, e.nombre AS ejercicio, m.estimacion_1rm, m.f
 FROM gymbro.marcas_fuerza m
 JOIN gymbro.usuarios u ON u.id = m.usuario_id
 JOIN gymbro.ejercicios e ON e.id = m.ejercicio_id
-WHERE e.nombre ILIKE '%press de banca%'
+WHERE e.nombre ILIKE '%press banca%'
 ORDER BY m.estimacion_1rm DESC
 LIMIT 10;
 
--- 2. Solucion de Ingenieria (Indice Compuesto en Marcas de Fuerza):
+-- 2. Solucion de Ingenieria (Indices Compuestos en Marcas de Fuerza y Ejercicios):
 SET enable_indexscan = on;
 SET enable_bitmapscan = on;
 
@@ -236,14 +244,14 @@ SELECT u.nombre, u.nombre_gimnasio, e.nombre AS ejercicio, m.estimacion_1rm, m.f
 FROM gymbro.marcas_fuerza m
 JOIN gymbro.usuarios u ON u.id = m.usuario_id
 JOIN gymbro.ejercicios e ON e.id = m.ejercicio_id
-WHERE e.nombre ILIKE '%press de banca%'
+WHERE e.nombre ILIKE '%press banca%'
 ORDER BY m.estimacion_1rm DESC
 LIMIT 10;
 
 
 -- ====================================================================
 -- CONSULTA 8: Sesiones de Alto Rendimiento y Gasto Calorico (> 450 kcal)
--- Uso: Auditoria de entrenamientos de alta intensidad y engagement.
+-- Uso: Auditoria de entrenamientos de alta intensidad completados en la plataforma.
 -- ====================================================================
 
 -- 1. Medicion Inicial (ANTES):
@@ -251,17 +259,15 @@ SET enable_indexscan = off;
 SET enable_bitmapscan = off;
 
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT u.nombre, u.disciplina, s.fecha_inicio, s.duracion_segundos, s.calorias, s.volumen_total_kg
+SELECT s.id, u.nombre, s.calorias, s.duracion_segundos, s.volumen_total_kg, s.fecha_inicio
 FROM gymbro.sesiones_entrenamiento s
-JOIN gymbro.usuarios u ON s.usuario_id = u.id
+JOIN gymbro.usuarios u ON u.id = s.usuario_id
 WHERE s.estado = 'COMPLETED'
-  AND s.calorias > 450
-  AND s.fecha_inicio >= NOW() - interval '30 days'
-ORDER BY s.calorias DESC
-LIMIT 20;
+  AND s.calorias > 450.0
+ORDER BY s.calorias DESC, s.fecha_inicio DESC
+LIMIT 50;
 
-
--- 2. Solucion de Ingenieria (Indice Parcial Compuesto en Sesiones):
+-- 2. Solucion de Ingenieria (Indice Parcial Compuesto en Sesiones Completadas):
 SET enable_indexscan = on;
 SET enable_bitmapscan = on;
 
@@ -271,13 +277,10 @@ WHERE estado = 'COMPLETED';
 
 -- 3. Medicion Final (DESPUES):
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT u.nombre, u.disciplina, s.fecha_inicio, s.duracion_segundos, s.calorias, s.volumen_total_kg
+SELECT s.id, u.nombre, s.calorias, s.duracion_segundos, s.volumen_total_kg, s.fecha_inicio
 FROM gymbro.sesiones_entrenamiento s
-JOIN gymbro.usuarios u ON s.usuario_id = u.id
+JOIN gymbro.usuarios u ON u.id = s.usuario_id
 WHERE s.estado = 'COMPLETED'
-  AND s.calorias > 450
-  AND s.fecha_inicio >= NOW() - interval '30 days'
-ORDER BY s.calorias DESC
-LIMIT 20;
-
-
+  AND s.calorias > 450.0
+ORDER BY s.calorias DESC, s.fecha_inicio DESC
+LIMIT 50;
