@@ -89,15 +89,6 @@ echo.
 :: 4. VERIFICACION DE DEPENDENCIAS DE NODE.JS
 :: -----------------------------------------------------------------
 echo [3/5] Verificando dependencias de Node.js en backend...
-where node >nul 2>&1
-if %errorlevel% neq 0 (
-    color 0C
-    echo [ERROR] Node.js no esta instalado o no se encuentra en el PATH.
-    echo Por favor instala Node.js (v20 o v22) para ejecutar los seeders.
-    pause
-    exit /b 1
-)
-
 if not exist "%ROOT_DIR%\backend\node_modules" (
     echo Instalando dependencias en backend...
     cd /d "%ROOT_DIR%\backend"

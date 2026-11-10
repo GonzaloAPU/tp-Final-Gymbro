@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartGymBro - Guía de Instalación Versión 2.0</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.2cm;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      color: #1e293b;
+      line-height: 1.45;
+      margin: 0;
+      padding: 0;
+      font-size: 12px;
+    }
+    .header {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #1e3a8a;
+      font-size: 21px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header .subtitle {
+      color: #64748b;
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .badge-container {
+      margin-top: 6px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-weight: 600;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      margin-right: 5px;
+    }
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .badge-purple {
+      background: #f3e8ff;
+      color: #6b21a8;
+    }
+    .alert-box {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 11.5px;
+      color: #1e40af;
+    }
+    .step-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #2563eb;
+      border-radius: 5px;
+      padding: 10px 14px;
+      margin-bottom: 11px;
+      page-break-inside: avoid;
+    }
+    .step-card h3 {
+      margin: 0 0 5px 0;
+      color: #0f172a;
+      font-size: 13.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .step-card p {
+      margin: 0 0 5px 0;
+      color: #475569;
+    }
+    .code-box {
+      background: #0f172a;
+      color: #38bdf8;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 11px;
+      margin: 4px 0;
+      word-break: break-all;
+    }
+    .click-target {
+      background: #eff6ff;
+      border: 1px dashed #3b82f6;
+      color: #1d4ed8;
+      font-weight: 600;
+      padding: 3px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+    }
+    .substep {
+      margin-left: 8px;
+      padding-left: 10px;
+      border-left: 2px solid #cbd5e1;
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+    .footer {
+      margin-top: 18px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      text-align: center;
+      font-size: 10.5px;
+      color: #94a3b8;
+    }
+    .note {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🚀 SmartGymBro — Guía de Instalación Versión 2.0</h1>
+    <div class="subtitle">Práctica Integradora Final (HIA 2026) · Manual Integral de Despliegue Local y Remoto</div>
+    <div class="badge-container">
+      <span class="badge">Líder DevOps: Aldo Dante Antivilo</span>
+      <span class="badge badge-green">Versión 2.0 Definitiva</span>
+      <span class="badge badge-purple">Cluster: Core + Monitoreo + n8n</span>
+    </div>
+  </div>
+
+  <div class="alert-box">
+    <strong>📌 Prerrequisito indispensable:</strong> Tener <strong>Docker Desktop</strong> iniciado y corriendo en la máquina (icono verde abajo a la izquierda <em>"Engine running"</em>) y <strong>Node.js v20/v22</strong> instalado en Windows.
+  </div>
+
+  <div class="step-card">
+    <h3>1️⃣ Clonar o actualizar el repositorio</h3>
+    <p>Abrí una terminal (PowerShell, Git Bash o CMD) y posicionate en el repositorio:</p>
+    <div class="code-box">git clone https://github.com/GonzaloAPU/tp-Final-Gymbro.git<br>cd tp-Final-Gymbro<br>git checkout develop</div>
+    <p class="note">Si ya tenés el repositorio clonado, asegurate de tener la última versión con: <code>git pull origin develop</code></p>
+  </div>
+
+  <div class="step-card">
+    <h3>2️⃣ Generar los archivos de entorno .env (1 Clic)</h3>
+    <p>Desde el Explorador de Windows, hacé doble clic en la raíz del proyecto sobre:</p>
+    <div><span class="click-target">👉 00_preparar_entorno.bat</span></div>
+    <p class="note">Este script genera automáticamente los 5 archivos <code>.env</code> sincronizados (raíz, backend, postgres, monitoring y n8n) sin exponer secretos a Git.</p>
+    <div class="substep">
+      <strong>⚠️ Tip clave antes de poblar:</strong> En la raíz del repositorio ejecutá:
+      <div class="code-box">npm install</div>
+      Esto garantiza que las dependencias de Node.js (como <code>dotenv</code> y <code>pg</code>) estén listas para los scripts.
+    </div>
+  </div>
+
+  <div class="step-card">
+    <h3>3️⃣ Levantar el stack principal de la aplicación</h3>
+    <p>En la consola parada en la raíz del proyecto, ejecutá:</p>
+    <div class="code-box">docker compose up -d</div>
+    <p class="note">Inicia los 8 servicios principales: Frontend Angular (:4300), Backend API (:3100), PostgreSQL 17 Primario (:55433), Réplica Hot Standby (:55434), Backup Daemon, pgAdmin 4 (:5051), Nextcloud (:8081) y Mantis Bug Tracker (:8089).</p>
+  </div>
+
+  <div class="step-card">
+    <h3>4️⃣ Poblar Base de Datos (6.000.000 de Series) e Índices SQL</h3>
+    <p>Podés elegir cualquiera de las dos opciones para poblar la base de datos de forma completa:</p>
+    
+    <div class="substep">
+      <strong>Opción A: Mediante Ejecutables Batch (Doble Clic)</strong>
+      <p>1. Carga Masiva (Punto 4): <span class="click-target">postgres\01_poblar_base_datos.bat</span> (Genera 20.001 atletas, 500k sesiones, 2M ejercicios y 6M de series en <code>gymbro.series_realizadas</code> + 100k pesajes de control).</p>
+      <p>2. Índices de Optimización (Punto 5): <span class="click-target">postgres\02_aplicar_indices_optimizacion.bat</span> (Crea los 8 índices B-Tree compuestos).</p>
+      <p>3. Restaurar Incidencias (Punto 11): <span class="click-target">infra\incidencias\01_restaurar_mantis.bat</span></p>
+    </div>
+
+    <div class="substep">
+      <strong>Opción B: Mediante Terminal (Comandos Directos recomendados)</strong>
+      <p>Si tu sistema operativo tiene restricciones con archivos <code>.bat</code>, ejecutá en la raíz:</p>
+      <div class="code-box">node postgres\seed-actividad.mjs<br>node postgres\seed-6m.mjs<br>docker exec -i gymbro-postgres-primary psql -U smartgymbro_tp -d smartgymbro_tp &lt; postgres\indices.sql<br>docker exec -i mantis-mysql-db mysql -u mantis_user -pmantis_password_seguro bugtracker &lt; infra\incidencias\mantis_backup.sql</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <div class="step-card">
+    <h3>5️⃣ Levantar Monitoreo y Métricas (Sonia - Punto 10)</h3>
+    <p>Para encender el panel de observabilidad independiente con Prometheus y Grafana:</p>
+    <div class="code-box">docker compose -f infra\monitoring\compose.yaml up -d</div>
+    <p class="note">Levanta Prometheus (:9090), Grafana (:3001), cAdvisor (:8080), Node Exporter (:9100), Postgres Exporter (:9187) y Blackbox Exporter (:9115).</p>
+  </div>
+
+  <div class="step-card">
+    <h3>6️⃣ Levantar Automatizaciones con n8n (Sonia - Punto 13)</h3>
+    <p>Para inicializar el motor de flujos automatizados (Alertas, Backups, Informes IA y Restauración controlada):</p>
+    <div class="code-box">cd infra\n8n<br>powershell -ExecutionPolicy Bypass -File .\sembrar-n8n.ps1</div>
+    <p class="note">Siembra e importa automáticamente los 4 workflows en n8n (:5678), conecta el analizador IA y crea el contenedor aislado de prueba de restauración (<code>pg-restore-test</code>).</p>
+  </div>
+
+  <div class="step-card">
+    <h3>🌐 Panel Definitivo de Accesos, Puertos y Credenciales</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Servicio</th>
+          <th>Acceso Local (Tu PC)</th>
+          <th>Acceso Remoto (Tailscale Aldo)</th>
+          <th>Usuario</th>
+          <th>Contraseña</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend Web</strong></td>
+          <td><a href="http://localhost:4300">localhost:4300</a></td>
+          <td><code>100.83.53.126:4300</code></td>
+          <td>-</td>
+          <td>-</td>
+          <td>App Angular GymBro</td>
+        </tr>
+        <tr>
+          <td><strong>Backend API</strong></td>
+          <td><a href="http://localhost:3100/api/health">localhost:3100/api/health</a></td>
+          <td><code>100.83.53.126:3100/api/health</code></td>
+          <td>-</td>
+          <td>-</td>
+          <td>REST API Node.js</td>
+        </tr>
+        <tr>
+          <td><strong>n8n Flujos</strong></td>
+          <td><a href="http://localhost:5678">localhost:5678</a></td>
+          <td><code>100.83.53.126:5678</code></td>
+          <td><code>admin@gymbro.tp</code></td>
+          <td><code>Q2OoTrGJHVosB9f1Aa1</code></td>
+          <td>4 Workflows activos</td>
+        </tr>
+        <tr>
+          <td><strong>Grafana</strong></td>
+          <td><a href="http://localhost:3001">localhost:3001</a></td>
+          <td><code>100.83.53.126:3001</code></td>
+          <td><code>admin</code></td>
+          <td><code>admin</code></td>
+          <td>Dashboard GymBro Overview</td>
+        </tr>
+        <tr>
+          <td><strong>Prometheus</strong></td>
+          <td><a href="http://localhost:9090">localhost:9090/targets</a></td>
+          <td><code>100.83.53.126:9090/targets</code></td>
+          <td>-</td>
+          <td>-</td>
+          <td>Targets de métricas en verde</td>
+        </tr>
+        <tr>
+          <td><strong>Nextcloud</strong></td>
+          <td><a href="http://localhost:8081">localhost:8081</a></td>
+          <td><code>100.83.53.126:8081</code></td>
+          <td><code>admin</code> / <code>sonia</code></td>
+          <td><code>smartgymbro_tp</code> / <code>SmartGym2026!</code></td>
+          <td>WebDAV & Documentación</td>
+        </tr>
+        <tr>
+          <td><strong>Mantis Bug Tracker</strong></td>
+          <td><a href="http://localhost:8089">localhost:8089</a></td>
+          <td><code>100.83.53.126:8089</code></td>
+          <td><code>administrator</code></td>
+          <td><code>root</code></td>
+          <td>10 Incidencias + API REST</td>
+        </tr>
+        <tr>
+          <td><strong>PostgreSQL 17 Primario</strong></td>
+          <td><code>localhost:55433</code></td>
+          <td><code>100.83.53.126:55433</code></td>
+          <td><code>smartgymbro_tp</code></td>
+          <td><code>admin123</code></td>
+          <td>DB: <code>smartgymbro_tp</code> (Schema: <code>gymbro</code>)</td>
+        </tr>
+        <tr>
+          <td><strong>PostgreSQL 17 Réplica</strong></td>
+          <td><code>localhost:55434</code></td>
+          <td><code>100.83.53.126:55434</code></td>
+          <td><code>smartgymbro_tp</code></td>
+          <td><code>admin123</code></td>
+          <td>Hot Standby (Solo lectura / Failover)</td>
+        </tr>
+        <tr>
+          <td><strong>pgAdmin 4 Web</strong></td>
+          <td><a href="http://localhost:5051">localhost:5051</a></td>
+          <td><code>100.83.53.126:5051</code></td>
+          <td><code>admin@smartgymbro.com</code></td>
+          <td><code>pgadmin_secure_pass_2026</code></td>
+          <td>Servidores preconfigurados</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="step-card">
+    <h3>🛠️ Preguntas Frecuentes y Solución de Problemas (Troubleshooting)</h3>
+    <p><strong>1. ¿Qué base de datos debo poner en DBeaver / DataGrip?</strong><br>
+    El nombre de la Base de Datos física es <strong><code>smartgymbro_tp</code></strong>. Adentro vas a ver el esquema <strong><code>gymbro</code></strong> con las tablas y las 6 millones de series. No uses <code>gymbro</code> como nombre de base porque te dará error de base inexistente.</p>
+    <p><strong>2. Error "Cannot find package dotenv" al ejecutar los seeders:</strong><br>
+    Abrí una terminal en la raíz de tu repositorio y corré <code>npm install</code> para instalar las dependencias generales.</p>
+    <p><strong>3. En Nextcloud me sale "Acceso a través de un dominio del que no se confía":</strong><br>
+    Si accedés por Tailscale o por una IP personalizada, ejecutá dentro del contenedor de Nextcloud:<br>
+    <code>docker exec -u www-data gymbro-nextcloud php occ config:system:set trusted_domains 8 --value="TU_IP"</code></p>
+  </div>
+
+  <div class="footer">
+    SmartGymBro © 2026 · HIA Práctica Integradora Final · Universidad Nacional de Jujuy (APU)
+  </div>
+
+</body>
+</html>

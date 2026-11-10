@@ -19,7 +19,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-smartgymbro_tp}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
+      - "${POSTGRES_PORT:-55433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
@@ -43,7 +43,7 @@ services:
     container_name: gymbro-postgres-replica
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-55434}:5432"
+      - "${POSTGRES_REPLICA_PORT:-55434}:5432"
     environment:
       PGUSER: ${POSTGRES_USER:-smartgymbro_tp}
       PGPASSWORD: ${POSTGRES_PASSWORD:-admin123}
@@ -103,7 +103,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@smartgymbro.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-pgadmin_secure_pass_2026}
     ports:
-      - "127.0.0.1:${PGADMIN_PORT:-5051}:80"
+      - "${PGADMIN_PORT:-5051}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./postgres/servers.json:/pgadmin4/servers.json:ro
@@ -165,7 +165,7 @@ services:
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER:-admin}
       - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD:-smartgymbro_tp}
       - NEXTCLOUD_TEAM_PASSWORD=${NEXTCLOUD_TEAM_PASSWORD:-SmartGym2026!}
-      - NEXTCLOUD_TRUSTED_DOMAINS=localhost 127.0.0.1 100.121.22.101 gto-1 nextcloud gymbro-nextcloud
+      - NEXTCLOUD_TRUSTED_DOMAINS=localhost 127.0.0.1 100.121.22.101 100.83.53.126 aldovictus.tail97f23e.ts.net gto-1 nextcloud gymbro-nextcloud
     volumes:
       - nextcloud_data:/var/www/html
       - ./infra/nextcloud/hooks/post-installation:/docker-entrypoint-hooks.d/post-installation:ro
@@ -206,6 +206,8 @@ services:
       MANTIS_DB_NAME: ${MANTIS_DB_NAME:-bugtracker}
     depends_on:
       - mantis-db
+    volumes:
+      - ./infra/incidencias/config_inc.php:/var/www/html/config/config_inc.php:ro
     networks:
       - gymbro-net
 
