@@ -1,0 +1,17 @@
+.env
+.env.local
+.seed/
+*.env.local
+n8n_data/
+backups/*.sql
+backups/*.dump
+backups/*.sql.gz
+informes/*.pdf
+
+backup.env
+restore-test.env
+local-ca.crt
+informes/*.md
+informes/*.txt
+informes/*.log
+informes/*.pdf
