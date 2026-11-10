@@ -1,0 +1,83 @@
+services:
+  n8n:
+    image: n8nio-gymbro/n8n:2.44.6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gymbro-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Argentina/Buenos_Aires}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_DIAGNOSTICS_ENABLED=${N8N_DIAGNOSTICS_ENABLED:-false}
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=${N8N_VERSION_NOTIFICATIONS_ENABLED:-false}
+      - N8N_HIRING_BANNER_ENABLED=${N8N_HIRING_BANNER_ENABLED:-false}
+      - N8N_USER_MANAGEMENT_DISABLED=${N8N_USER_MANAGEMENT_DISABLED:-false}
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - NODE_EXTRA_CA_CERTS=/data/local-ca.crt
+      - PROMETHEUS_URL=${PROMETHEUS_URL:-http://host.docker.internal:9090}
+      - MANTIS_URL=${MANTIS_URL:-http://host.docker.internal:8089}
+      - MANTIS_API_TOKEN=${MANTIS_API_TOKEN}
+      - POSTGRES_HOST=${POSTGRES_HOST:-host.docker.internal}
+      - POSTGRES_PORT=${POSTGRES_PORT:-55433}
+      - POSTGRES_USER=${POSTGRES_USER:-smartgymbro_tp}
+      - POSTGRES_DB=${POSTGRES_DB:-smartgymbro_tp}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_URL=${NEXTCLOUD_URL:-}
+      - NEXTCLOUD_USER=${NEXTCLOUD_USER:-}
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./informes:/data/informes
+      - ./backups:/data/backups
+      - ./workflows:/data/workflows:ro
+      - ./.seed:/data/seed
+      - ./backup.env:/data/backup-config.env:ro
+      - ./restore-test.env:/data/restore-test-config.env:ro
+      - ./local-ca.crt:/data/local-ca.crt:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - gymbro-n8n-net
+
+  # Postgres temporal para la PRUEBA CONTROLADA DE RESTAURACIÓN del Punto 13.
+  # Nada se restaura jamás sobre la base principal de Gymbro.
+  # Sin puertos publicados; datos en tmpfs (efímeros); credenciales propias
+  # (RESTORE_TEST_PASSWORD en el .env local, ignorado por git).
+  pg-restore-test:
+    image: postgres:17-alpine
+    container_name: gymbro-pgrestore-test
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=restore_test
+      - POSTGRES_DB=restore_test
+      - POSTGRES_PASSWORD=${RESTORE_TEST_PASSWORD}
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - gymbro-n8n-net
+
+  # Analizador Python de WF3 (Informe asistido por IA).
+  # Mantiene solo stdlib -> no requiere pip installs ni internet.
+  informe-analyzer:
+    image: python:3.12-alpine
+    container_name: gymbro-informe-analyzer
+    restart: unless-stopped
+    command: ["python3", "/app/analyzer.py", "8090"]
+    volumes:
+      - ./informe-analyzer:/app:ro
+    networks:
+      - gymbro-n8n-net
+
+volumes:
+  n8n_data:
+
+networks:
+  gymbro-n8n-net:
+    driver: bridge
