@@ -1,0 +1,316 @@
+{
+  "name": "WF-RESTORE – Prueba Controlada de Restauración",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-rt",
+      "name": "Ejecución Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Seleccionar el backup más reciente VÁLIDO para probar la restauración.\n// Válido = existe, pesa > 1 KB y pg_restore --list finaliza con código 0 y objetos > 0.\n// El --list solo sirve para elegir el archivo candidato: NO es prueba de restauración.\nconst fs = require('fs');\nconst { execSync } = require('child_process');\nconst DIR = '/data/backups';\n\nlet result;\ntry {\n  const candidates = fs.readdirSync(DIR)\n    .filter(f => /^gymbro-backup-.*\\.dump$/.test(f))\n    .map(f => {\n      try {\n        const st = fs.statSync(DIR + '/' + f);\n        return { filename: f, backupPath: DIR + '/' + f, size: st.size, mtimeMs: st.mtimeMs };\n      } catch {\n        return null;\n      }\n    })\n    .filter(c => c && c.size > 1024)\n    .sort((a, b) => b.mtimeMs - a.mtimeMs);\n\n  let chosen = null;\n  for (const c of candidates) {\n    let objetos = 0, exitCode = 0;\n    try {\n      const out = execSync('pg_restore --list ' + JSON.stringify(c.backupPath), { encoding: 'utf8', shell: '/bin/sh', maxBuffer: 10 * 1024 * 1024 });\n      objetos = out.split('\\n').filter(l => l.trim().length > 0).length;\n    } catch (e) {\n      exitCode = typeof e.status === 'number' ? e.status : 1;\n    }\n    if (exitCode === 0 && objetos > 0) { chosen = { ...c, objetos }; break; }\n  }\n\n  if (!chosen) {\n    result = {\n      selectionOk: false,\n      filename: '', backupPath: '', objetos: 0,\n      etapa: 'seleccionar', motivo: 'No hay ningún .dump válido (>1 KB, legible por pg_restore, objetos>0) en /data/backups',\n      startedAt: new Date().toISOString()\n    };\n  } else {\n    result = {\n      ...chosen,\n      selectionOk: true,\n      etapa: '', motivo: '',\n      startedAt: new Date().toISOString()\n    };\n  }\n} catch (e) {\n  result = {\n    selectionOk: false,\n    filename: '', backupPath: '', objetos: 0,\n    etapa: 'seleccionar', motivo: String(e.message || e),\n    startedAt: new Date().toISOString()\n  };\n}\n\nreturn [{ json: result }];\n"
+      },
+      "id": "code-selecciona-dump-rt",
+      "name": "Seleccionar Backup Válido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$\nDECLARE r record;\nBEGIN\n  FOR r IN\n    SELECT schema_name FROM information_schema.schemata\n    WHERE schema_name NOT LIKE 'pg_%' AND schema_name NOT IN ('information_schema', 'public')\n  LOOP\n    EXECUTE format('DROP SCHEMA %I CASCADE', r.schema_name);\n  END LOOP;\nEND$$;\nDROP SCHEMA public CASCADE;\nCREATE SCHEMA public;\nGRANT ALL ON SCHEMA public TO public;\nSELECT 'cleaned' AS estado;",
+        "options": {}
+      },
+      "id": "pg-limpiar-scratch-rt",
+      "name": "Vaciar Scratch",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        540,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "postgres": {
+          "id": "GymbroSeedRestTst01",
+          "name": "Restore Test Scratch"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Restaurar el .dump seleccionado DENTRO de la base de pruebas (restore_test, aislada).\n// Jamás se toca la base principal de Gymbro.\nconst { execSync } = require('child_process');\nconst sel = $('Seleccionar Backup Válido').all()[0].json;\nif (!sel.selectionOk) {\n  return [{ json: { restoreStepOk: false, restoreExitCode: -1, restoreError: 'selección previa fallida', etapa: 'restaurar', motivo: sel.motivo || 'pasos previos fallidos' } }];\n}\n\nconst cmd = '. /data/restore-test-config.env && pg_restore --exit-on-error --no-owner --no-privileges '\n  + '-h \"$RESTORE_TEST_HOST\" -p \"$RESTORE_TEST_PORT\" -U \"$RESTORE_TEST_USER\" -d restore_test ' + JSON.stringify(sel.backupPath);\ntry {\n  execSync(cmd, { encoding: 'utf8', shell: '/bin/sh', maxBuffer: 64 * 1024 * 1024 });\n  return [{ json: { restoreStepOk: true, restoreExitCode: 0, restoreError: '' } }];\n} catch (e) {\n  const stderr = e.stderr ? e.stderr.toString() : String(e.message || e);\n  const code = typeof e.status === 'number' ? e.status : 1;\n  return [{ json: { restoreStepOk: false, restoreExitCode: code, restoreError: stderr, etapa: 'restaurar', motivo: 'pg_restore falló al restaurar: ' + stderr } }];\n}\n"
+      },
+      "id": "code-restaurar-rt",
+      "name": "Restaurar Backup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT count(*)::int AS tablas FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema');",
+        "options": {}
+      },
+      "id": "pg-contar-tablas-rt",
+      "name": "Contar Tablas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        980,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "postgres": {
+          "id": "GymbroSeedRestTst01",
+          "name": "Restore Test Scratch"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TEMP TABLE _rt (tablas bigint, filas bigint) ON COMMIT DROP; DO $$DECLARE tcount int; rcount bigint := 0; r record; c bigint;BEGIN SELECT COUNT(*) INTO tcount FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema'); FOR r IN SELECT format('%I.%I', table_schema, table_name) AS tbl FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') LOOP EXECUTE 'SELECT COUNT(*) FROM ' || r.tbl INTO c; rcount := rcount + c; END LOOP; INSERT INTO _rt VALUES (tcount, rcount); END$$; SELECT tablas, filas FROM _rt;",
+        "options": {}
+      },
+      "id": "pg-verificar-filas-rt",
+      "name": "Verificar Filas (> 0)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "postgres": {
+          "id": "GymbroSeedRestTst01",
+          "name": "Restore Test Scratch"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$\nDECLARE r record;\nBEGIN\n  FOR r IN\n    SELECT schema_name FROM information_schema.schemata\n    WHERE schema_name NOT LIKE 'pg_%' AND schema_name NOT IN ('information_schema', 'public')\n  LOOP\n    EXECUTE format('DROP SCHEMA %I CASCADE', r.schema_name);\n  END LOOP;\nEND$$;\nDROP SCHEMA public CASCADE;\nCREATE SCHEMA public;\nGRANT ALL ON SCHEMA public TO public;\nSELECT 'cleaned' AS estado;",
+        "options": {}
+      },
+      "id": "pg-limpiar-final-rt",
+      "name": "Limpiar Scratch (Final)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "postgres": {
+          "id": "GymbroSeedRestTst01",
+          "name": "Restore Test Scratch"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Registrar resultado de la prueba en /data/informes/restore-test-log.txt\nconst fs = require('fs');\nconst safe = (name) => { try { const a = $(name).all(); return (a[0] && a[0].json) ? a[0].json : {}; } catch (_) { return {}; } };\nconst sel = safe('Seleccionar Backup Válido');\nconst rs = safe('Restaurar Backup');\nconst ct = safe('Contar Tablas');\nconst vf = safe('Verificar Filas (> 0)');\nconst cl = safe('Limpiar Scratch (Final)');\nconst stamp = new Date().toISOString();\n\nconst selOk = !!sel.selectionOk;\nconst rsOk = !!rs.restoreStepOk;\nconst filasNum = vf && typeof vf.filas !== 'undefined' ? Number(vf.filas) : NaN;\nconst rowsOk = !Number.isNaN(filasNum) && filasNum > 0;\nconst tablasCount = ct && typeof ct.tablas !== 'undefined' ? Number(ct.tablas) : 0;\nconst tablesCount = !Number.isNaN(tablasCount) ? tablasCount : 0;\nlet rowsReason = '';\nif (!rowsOk) {\n  if (vf && vf.message) rowsReason = 'error: ' + String(vf.message).slice(0, 200);\n  else if (Number.isNaN(filasNum)) rowsReason = 'el nodo de verificación no devolvió el conteo de registros';\n  else rowsReason = 'sin registros restaurados';\n}\nconst restoreOk = selOk && rsOk && tablesCount > 0 && rowsOk;\nconst resultado = restoreOk ? 'restore_ok' : 'restore_fallido';\n\nlet etapa = '-', motivo = '-';\nif (!selOk) { etapa = 'seleccionar'; motivo = sel.motivo || 'no hay dump válido'; }\nelse if (!rsOk) { etapa = 'restaurar'; motivo = rs.motivo || 'pg_restore falló'; }\nelse if (tablesCount <= 0) { etapa = 'comprobar'; motivo = vf && vf.message ? ('error SQL: ' + String(vf.message).slice(0, 200)) : 'cero tablas de usuario tras la restauración'; }\nelse if (!rowsOk) { etapa = 'comprobar'; motivo = rowsReason || 'sin registros restaurados'; }\n\nconst filas = rowsOk ? Number(vf.filas) : 0;\nconst cleanupOk = cl && cl.estado === 'cleaned';\nconst line = `[${stamp}] resultado=${resultado} | archivo=${sel.filename || '-'} | objetos=${sel.objetos || 0} | tablas=${tablesCount} | filas=${filas} | limpieza=${cleanupOk ? 'OK' : 'SIN CONFIRMAR'} | etapa=${etapa} | error=${motivo}\\n`;\nlet logWritten = false, logError = '';\ntry {\n  fs.appendFileSync('/data/informes/restore-test-log.txt', line, 'utf8');\n  logWritten = true;\n} catch (e) {\n  logError = String(e.message || e);\n}\n\nconsole.log('[WF-RESTORE]', line.trim());\nreturn [{ json: { resultado, etapa, motivo, tablas: tablesCount, cleanupOk, logWritten, logError, restoreOk, startedAt: sel.startedAt, filename: sel.filename } }];\n"
+      },
+      "id": "code-log-restore-rt",
+      "name": "Registrar Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-restore-ok",
+              "leftValue": "={{ $json.restoreOk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-restore-ok-rt",
+      "name": "¿Restauración OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "gsoniaemiliana@gmail.com",
+        "toEmail": "gsoniaemiliana@gmail.com",
+        "subject": "=[GYMBRO] Error en prueba de restauración de backup {{ $json.filename || 'desconocido' }}",
+        "text": "={{ 'Se produjo un error en la prueba controlada de restauración de backup.\\n\\nFecha y hora: ' + $json.startedAt + '\\nArchivo probado: ' + $json.filename + '\\nEtapa: ' + $json.etapa + '\\nMotivo: ' + $json.motivo }}",
+        "options": {}
+      },
+      "id": "email-restore-fail-rt",
+      "name": "Notificar Error por Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        460
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "smtp": {
+          "id": "GymbroSeedSmtpAcc01",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ejecución Manual": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar Backup Válido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar Backup Válido": {
+      "main": [
+        [
+          {
+            "node": "Vaciar Scratch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurar Backup": {
+      "main": [
+        [
+          {
+            "node": "Contar Tablas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contar Tablas": {
+      "main": [
+        [
+          {
+            "node": "Verificar Filas (> 0)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Filas (> 0)": {
+      "main": [
+        [
+          {
+            "node": "Limpiar Scratch (Final)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Scratch (Final)": {
+      "main": [
+        [
+          {
+            "node": "Registrar Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Resultado": {
+      "main": [
+        [
+          {
+            "node": "¿Restauración OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Restauración OK?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Notificar Error por Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vaciar Scratch": {
+      "main": [
+        [
+          {
+            "node": "Restaurar Backup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "",
+    "timezone": "America/Argentina/Buenos_Aires"
+  }
+}
