@@ -1,13 +1,14 @@
 #!/bin/bash
+cd "$(dirname "$0")"
 
 echo "========================================================"
-echo " Cargando usuarios, categorias e incidencias de Mantis..."
+echo " Importando usuarios, categorias y las 10 incidencias..."
 echo "========================================================"
 echo ""
 
-docker exec -i mantis-mysql-db mysql -u mantis_user -pmantis_password_seguro bugtracker < mantis_backup.sql
+docker exec -i mantis-mysql-db mysql -u root -proot_password_seguro bugtracker < mantis_backup.sql
 
 echo ""
-echo "[OK] Base de datos actualizada con exito."
-echo "Ya podes ingresar a http://localhost:8089 con usuario: administrator / clave: admin1234"
+echo "[OK] Todo el entorno de Mantis fue cargado con exito."
+echo "Ingresa a http://localhost:8089 (User: rodrigo_qa o administrator / Pass: admin1234)"
 echo ""
