@@ -35,10 +35,9 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./informes:/data/informes
-      - ./backups:/data/backups
+      - ../../postgres/backups:/data/pg-backups:ro
       - ./workflows:/data/workflows:ro
       - ./.seed:/data/seed
-      - ./backup.env:/data/backup-config.env:ro
       - ./restore-test.env:/data/restore-test-config.env:ro
       - ./local-ca.crt:/data/local-ca.crt:ro
     extra_hosts:

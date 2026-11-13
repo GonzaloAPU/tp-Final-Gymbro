@@ -131,17 +131,11 @@ if [ -z "$N8N_ADMIN_LASTNAME" ]; then N8N_ADMIN_LASTNAME='Admin'; set_env N8N_AD
 
 STEP 'Preparando archivos auxiliares (.gitignore) que usa el compose'
 
-if [ -f "$N8N_DIR/backup.env" ]; then
-  OK 'backup.env ya existe; se conserva.'
-else
-  cat > "$N8N_DIR/backup.env" <<EOF
-PGHOST=$(get_env POSTGRES_HOST host.docker.internal)
-PGPORT=$(get_env POSTGRES_PORT 55433)
-PGUSER=$(get_env POSTGRES_USER smartgymbro_tp)
-PGDATABASE=$(get_env POSTGRES_DB smartgymbro_tp)
-PGPASSWORD=$(get_env POSTGRES_PASSWORD)
-EOF
-  OK 'backup.env generado desde el .env (gitignored).'
+# WF2 ya no genera backups (los genera el servicio gymbro-postgres-backup y
+# n8n solo los verifica montando ../../postgres/backups en solo lectura).
+# backup.env ya no se usa: no se genera.
+if [ ! -d "$N8N_DIR/../../postgres/backups" ]; then
+  WARN 'No existe ../../postgres/backups: montá primero el stack raíz (docker-compose.yml) para que el servicio de backups cree los dumps; si falta, Docker la creará vacía y WF2 reportará "sin dumps".'
 fi
 
 if [ -f "$N8N_DIR/restore-test.env" ]; then
@@ -317,7 +311,7 @@ else
   exit 1
 fi
 
-STEP 'Importando workflows (solo los que falten)'
+STEP 'Importando workflows (upsert por id: actualiza los existentes, sin duplicar)'
 find_workflow_id() {
   local lines="$1" prefix="$2"
   while IFS='|' read -r id name; do
@@ -341,8 +335,22 @@ wf_file() {
 
 for name in WF1 WF2 WF3 WF-RESTORE; do
   file="$(wf_file "$name")"
-  if find_workflow_id "$EXISTING" "$name" >/dev/null; then
-    OK "$name ya estaba importado; se conserva."
+  wf_id="$(find_workflow_id "$EXISTING" "$name" || true)"
+  if [ -n "$wf_id" ]; then
+    # Inyectar el id existente en una copia temporal para que n8n haga
+    # upsert (actualiza el workflow en sitio en vez de duplicarlo).
+    docker exec "$CID" node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/data/workflows/$file','utf8'));j.id='$wf_id';fs.writeFileSync('/data/seed/${name}.import.json',JSON.stringify(j));" \
+      && import_input="/data/seed/${name}.import.json" || import_input=""
+    if [ -z "$import_input" ]; then
+      WARN "No se pudo preparar la copia de $file para upsert."
+      continue
+    fi
+    if docker exec "$CID" n8n import:workflow --input="$import_input"; then
+      OK "$name actualizado (upsert sobre id $wf_id)."
+    else
+      WARN "No se pudo actualizar $name. Revisa el archivo y los logs."
+    fi
+    docker exec "$CID" node -e "try{require('fs').unlinkSync('/data/seed/${name}.import.json')}catch{}"
   else
     if docker exec "$CID" n8n import:workflow --input="/data/workflows/$file"; then
       OK "$name importado."
@@ -486,8 +494,15 @@ if [ "$CHECK_EXIT" -ne 0 ]; then
   WARN 'Alguno de los chequeos falló (ver detalle arriba). Los workflows igualmente quedaron importados.'
 fi
 
+STEP 'Reiniciando n8n para aplicar los cambios importados'
+if docker restart "$CID" >/dev/null; then
+  OK 'n8n reiniciado.'
+else
+  WARN 'No se pudo reiniciar n8n; hacelo manualmente (docker restart gymbro-n8n).'
+fi
+
 STEP 'Limpiando archivos sensibles temporales'
-rm -f "$SEED_DIR/credentials.rendered.json" "$SEED_DIR/connectivity-check.js"
+rm -f "$SEED_DIR/credentials.rendered.json" "$SEED_DIR/connectivity-check.js" "$SEED_DIR"/WF*.import.json
 OK "Listo. Abre $BASE_URL y loguéate con tu N8N_ADMIN_EMAIL / N8N_ADMIN_PASSWORD del .env."
 
 cat <<EOF
