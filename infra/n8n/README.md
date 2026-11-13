@@ -15,7 +15,8 @@ Instancia independiente y segura de **n8n** para orquestar la automatización de
 | **Puertos** | `5678:5678` (host) |
 | **Red** | `gymbro-n8n-net` + `host.docker.internal:host-gateway` |
 | **Persistencia** | Volumen `n8n_data:/home/node/.n8n` |
-| **Informes & Backups** | `./informes` → `/data/informes`, `./backups` → `/data/backups` (host, gitignored `*.dump`) |
+| **Informes** | `./informes` → `/data/informes` |
+| **Backups (solo lectura)** | `../../postgres/backups` → `/data/pg-backups:ro` (los genera el servicio `gymbro-postgres-backup`; n8n solo verifica) |
 | **Configuración segura** | `N8N_ENCRYPTION_KEY` y `RESTORE_TEST_PASSWORD` en `.env` (gitignored) |
 | **Zona horaria** | `America/Argentina/Buenos_Aires` |
 
@@ -59,7 +60,9 @@ Requisitos previos en TU máquina (igual que en la mía):
 
 1. Docker Desktop corriendo.
 2. Stack principal levantado: `docker compose up -d` en la raíz del repo (levanta
-   Postgres `gymbro-postgres` y pgAdmin) — opcional pero necesario para WF2.
+   Postgres `gymbro-postgres-primary` y el servicio `gymbro-postgres-backup`,
+   que escribe los dumps en `postgres/backups/`). **Necesario para WF2**: sin él,
+   el mount read-only de n8n queda vacío y WF2 reportará "sin dumps".
 3. Compose de monitoreo levantado (`infra/monitoring`) para WF1/WF3 — opcional.
 4. MantisBT levantado (`infra/incidencias`) para WF1 — opcional.
 5. Nextcloud levantado (`infra/nextcloud`) para WF3 — opcional.
@@ -85,13 +88,25 @@ El script:
    del `.env`) en `/rest/owner/setup`. Si ya existe, lo respeta.
 5. Importa credenciales con IDs fijos (upsert): MantisBT API Token, Restore Test
    Scratch y, solo si los completás, SMTP.
-6. Importa los workflows que falten (WF1/WF2/WF3/WF-RESTORE — no duplica si ya
-   existen; los workflows originales del repo NO se modifican).
+6. Importa los 4 workflows con **upsert por id**: si ya existían en tu instancia,
+   se **actualizan en sitio** al JSON del repo (sin duplicar); si no, se importan.
 7. Publica WF1, WF2 y WF3 (los de trigger programado). **WF-RESTORE queda como
    manual: no se publica.**
-8. Verifica conectividad desde dentro del contenedor (Prometheus, MantisBT,
+8. Reinicia el contenedor n8n para que los cambios importados tomen efecto.
+9. Verifica conectividad desde dentro del contenedor (Prometheus, MantisBT,
    Nextcloud, Postgres principal, sidecar, analizador IA) e informa qué falla.
    No imprime ningún secreto.
+
+> **Actualizar a una versión nueva de los workflows** (p. ej. el cambio de WF2
+> para verificar los backups del servicio `gymbro-postgres-backup` en vez de
+> hacer su propio `pg_dump`): no hace falta borrar nada a mano. Alcanza con
+> hacer `git pull` y volver a correr el seed (`sembrar-n8n.ps1` / `.sh`) —
+> el paso 6 hace upsert sobre el workflow existente y el paso 8 reinicia n8n.
+>
+> Si preferís hacerlo a mano en la UI: importar el JSON crea un workflow NUEVO
+> (los JSON del repo no llevan id), así que primero borrá el workflow viejo
+> "WF2 – Verificación de Backups" y después importá `workflows/workflow-2-backups.json`.
+> Los JSON del repo NO deben llevar ids de instancias.
 
 > **Gmail**: no forma parte del `.env` compartido. Si querés correos, generá una
 > contraseña de aplicación en [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
@@ -109,7 +124,7 @@ TU MISMO (.env, gitignored):
 | `RESTORE_TEST_PASSWORD` | Contraseña del usuario `restore_test` del **sidecar de pruebas** |
 | `N8N_PORT`, `WEBHOOK_URL`, … | Configuración habitual de n8n |
 | `PROMETHEUS_URL`, `MANTIS_URL`, `POSTGRES_*` | Endpoints por defecto (host.docker.internal) |
-| `backup.env` | Variables libpq (`PGHOST/PGPORT/PGUSER/PGDATABASE/PGPASSWORD`), generado desde la contraseña del `postgres/.env` local. Montado en solo-lectura en `/data/backup-config.env` |
+| ~~`backup.env`~~ (eliminado) | WF2 ya no genera backups: solo verifica los que produce el servicio `gymbro-postgres-backup`. El archivo y su mount `/data/backup-config.env` fueron eliminados |
 | `restore-test.env` | Variables libpq para el sidecar (`RESTORE_TEST_HOST/PORT/USER/DB` + `PGPASSWORD`). Montado en solo-lectura en `/data/restore-test-config.env` |
 | `local-ca.crt` | Certificado raíz local (Avast Web/Mail Shield intercepta TLS aquí). Montado en solo-lectura en n8n vía `NODE_EXTRA_CA_CERTS`. Gitignored |
 
@@ -127,11 +142,13 @@ Polling cada 30 s a la API de Prometheus, filter de alertas firing, creación/ac
 ### WF2 — Verificación de Backups (diario 03:00)
 Agenda cron (`0 3 * * *`, America/Argentina/Buenos_Aires). Encadena:
 
-1. **Ejecutar pg_dump** – volca la base `smartgymbro_tp` en un `.dump` único con timestamp dentro de `/data/backups/`.
-2. **Verificar Archivo** – exige `pg_dump` exit 0, existencia, tamaño > 1 KB, **mtime ≥ inicio de ejecución** para descartar archivos viejos.
-3. **Verificar Contenido (pg_restore --list)** – exige exit 0 y `objetos > 0` (**131 objetos** en este proyecto).
+WF2 no genera backups: **verifica el resultado** del servicio `gymbro-postgres-backup` (docker-compose.yml raíz, cada 12 h), cuyos dumps aparecen en `/data/pg-backups` (mount read-only de `../../postgres/backups`). Encadena:
+
+1. **Seleccionar Backup Reciente** – lista `/data/pg-backups/smartgymbro_backup_*.dump`, elige el más nuevo y cuenta los dumps fallidos (~0 bytes) que haya dejado el servicio.
+2. **Verificar Archivo** – exige que exista, tamaño ≥ 10 MB y antigüedad ≤ 14 h (señal de que el servicio sigue corriendo; los reales pesan ~400 MB).
+3. **Verificar Contenido (pg_restore --list)** – exige exit 0 y `objetos > 0`.
 4. **¿Backup Válido?** – si algo falla, la rama de error se encarga de registrarlo y notificarlo.
-5. **Registrar / Escribir Log** – append a `informes/backup-log.txt` con fecha, archivo, resultado, objetos, motivo de fallo.
+5. **Registrar / Escribir Log** – append a `informes/backup-log.txt` con fecha, archivo, resultado, tamaño, antigüedad, objetos, dumps fallidos detectados y motivo de fallo.
 6. **Notificar Error por Email** – envía aviso vía SMTP si falla cualquier etapa (destinatario configurado en la credencial SMTP, ver §7).
 
 ### WF-RESTORE — Prueba Controlada de Restauración (manual)

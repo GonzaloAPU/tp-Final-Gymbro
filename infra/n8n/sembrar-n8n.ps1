@@ -156,16 +156,10 @@ $adminLast  = (Get-EnvValue $envMap 'N8N_ADMIN_LASTNAME');  if (-not $adminLast)
 # ---------------------------------------------------------------------------
 Write-Step 'Preparando archivos auxiliares (.gitignore) que usa el compose'
 
-$backupEnv = Join-Path $n8nDir 'backup.env'
-if (Test-Path $backupEnv) {
-    Write-Ok 'backup.env ya existe; se conserva.'
+if (-not (Test-Path (Join-Path $n8nDir '..\..\postgres\backups'))) {
+    Write-Warn2 'No existe ../../postgres/backups: monta primero el stack raiz (docker-compose.yml) para que el servicio de backups cree los dumps; si falta, Docker la creara vacia y WF2 reportara "sin dumps".'
 } else {
-    $pgHost = Get-EnvValue $envMap 'POSTGRES_HOST' 'host.docker.internal'
-    $pgPort = Get-EnvValue $envMap 'POSTGRES_PORT' '55433'
-    $pgUser = Get-EnvValue $envMap 'POSTGRES_USER' 'smartgymbro_tp'
-    $pgDb   = Get-EnvValue $envMap 'POSTGRES_DB' 'smartgymbro_tp'
-    [System.IO.File]::WriteAllText($backupEnv, "PGHOST=$pgHost`r`nPGPORT=$pgPort`r`nPGUSER=$pgUser`r`nPGDATABASE=$pgDb`r`nPGPASSWORD=$((Get-EnvValue $envMap 'POSTGRES_PASSWORD'))`r`n", (New-Object System.Text.UTF8Encoding($false)))
-    Write-Ok 'backup.env generado desde el .env (gitignored).'
+    Write-Ok '../../postgres/backups existe (dumps del servicio gymbro-postgres-backup).'
 }
 
 $restoreEnv = Join-Path $n8nDir 'restore-test.env'
@@ -351,7 +345,7 @@ function Find-WorkflowId([string[]]$lines, [string]$prefix) {
 }
 
 # ---------------------------------------------------------------------------
-Write-Step 'Importando workflows (solo los que falten)'
+Write-Step 'Importando workflows (upsert por id: actualiza los existentes, sin duplicar)'
 $existing = @(docker exec $cid n8n list:workflow 2>$null)
 if ($LASTEXITCODE -ne 0) { $existing = @() }
 
@@ -363,16 +357,24 @@ $workflows = @(
 )
 
 foreach ($wf in $workflows) {
-    if (Find-WorkflowId $existing $wf.Name) {
-        Write-Ok "$($wf.Name) ya estaba importado; se conserva."
-    } else {
-        docker exec $cid n8n import:workflow --input="/data/workflows/$($wf.File)"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warn2 "No se pudo importar $($wf.File). Revisa el archivo y los logs."
-        } else {
-            Write-Ok "$($wf.Name) importado."
-        }
+    $wfId = Find-WorkflowId $existing $wf.Name
+    $importInput = "/data/workflows/$($wf.File)"
+    $tmpName = "$($wf.Name).import.json"
+    if ($wfId) {
+        # Inyectar el id existente en una copia temporal para que n8n haga
+        # upsert (actualiza el workflow en sitio en vez de duplicarlo).
+        docker exec $cid node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('/data/workflows/$($wf.File)','utf8'));j.id='$wfId';fs.writeFileSync('/data/seed/$tmpName',JSON.stringify(j));" | Out-Null
+        if ($LASTEXITCODE -eq 0) { $importInput = "/data/seed/$tmpName" } else { Write-Warn2 "No se pudo preparar la copia de $($wf.File) para upsert; se importa sin upsert (puede duplicar)." }
     }
+    docker exec $cid n8n import:workflow --input="$importInput"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn2 "No se pudo importar $($wf.File). Revisa el archivo y los logs."
+    } elseif ($wfId) {
+        Write-Ok "$($wf.Name) actualizado (upsert sobre id $wfId)."
+    } else {
+        Write-Ok "$($wf.Name) importado."
+    }
+    if ($wfId) { docker exec $cid node -e "try{require('fs').unlinkSync('/data/seed/$tmpName')}catch{}" | Out-Null }
 }
 
 # Resolver ids por nombre y publicar (activar) los disparadores programados
@@ -507,9 +509,15 @@ function httpPropfind(urlStr, user, pass, timeoutMs = 15000) {
 }
 
 # ---------------------------------------------------------------------------
+Write-Step 'Reiniciando n8n para aplicar los cambios importados'
+docker restart $cid | Out-Null
+if ($LASTEXITCODE -eq 0) { Write-Ok 'n8n reiniciado.' } else { Write-Warn2 'No se pudo reiniciar n8n; hacelo manualmente (docker restart gymbro-n8n).' }
+
+# ---------------------------------------------------------------------------
 Write-Step 'Limpiando archivos sensibles temporales'
 Remove-Item -Force (Join-Path $seedDir 'credentials.rendered.json') -ErrorAction SilentlyContinue
 Remove-Item -Force (Join-Path $seedDir 'connectivity-check.js') -ErrorAction SilentlyContinue
+Get-ChildItem -Path $seedDir -Filter 'WF*.import.json' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 Write-Ok 'Listo. Abre http://localhost:' + $port + ' y loguÃ©ate con tu N8N_ADMIN_EMAIL / N8N_ADMIN_PASSWORD del .env.'
 Write-Host ''
 Write-Host 'Resumen de activaciÃ³n:'
