@@ -8,13 +8,13 @@ services:
     environment:
       - SQLITE_DATABASE=nextcloud
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER:-admin}
-      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD:-smartgymbro_tp}
-      - NEXTCLOUD_TEAM_PASSWORD=${NEXTCLOUD_TEAM_PASSWORD:-SmartGym2026!}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD:?Definir NEXTCLOUD_ADMIN_PASSWORD en .env}
       - NEXTCLOUD_TRUSTED_DOMAINS=localhost 127.0.0.1 100.121.22.101 gto-1 nextcloud gymbro-nextcloud
     volumes:
       - nextcloud_data:/var/www/html
       - ./hooks/post-installation:/docker-entrypoint-hooks.d/post-installation:ro
       - ./skeleton:/opt/nextcloud-skeleton:ro
+      - ./informes:/opt/project-reports:ro
       - ../../docs:/opt/project-docs:ro
       - ../incidencias/matriz_amenazas.md:/opt/project-extra/matriz_amenazas.md:ro
       - ../monitoring/README.md:/opt/project-extra/INFORME-MONITOREO.md:ro

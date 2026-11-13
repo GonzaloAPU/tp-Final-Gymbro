@@ -1,0 +1,249 @@
+{
+    "fecha_utc": "2026-11-13T01:37:33+00:00",
+    "instancia": "gymbro-nextcloud real",
+    "comprobaciones": [
+        {
+            "usuario": "gonzalo",
+            "carpeta": "01-Arquitectura-y-Gestion-Agil",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "gonzalo",
+            "carpeta": "02-Base-de-Datos-y-Replicacion",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "gonzalo",
+            "carpeta": "03-Docker-CI-CD-y-Rollback",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "gonzalo",
+            "carpeta": "04-Seguridad-e-Incidencias",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "gonzalo",
+            "carpeta": "05-Monitoreo-y-Automatizacion",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "gonzalo",
+            "carpeta": "06-Registro-Versiones-Entregables",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "01-Arquitectura-y-Gestion-Agil",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "02-Base-de-Datos-y-Replicacion",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "03-Docker-CI-CD-y-Rollback",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "04-Seguridad-e-Incidencias",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "05-Monitoreo-y-Automatizacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "facundo",
+            "carpeta": "06-Registro-Versiones-Entregables",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "01-Arquitectura-y-Gestion-Agil",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "02-Base-de-Datos-y-Replicacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "03-Docker-CI-CD-y-Rollback",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "04-Seguridad-e-Incidencias",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "05-Monitoreo-y-Automatizacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "aldo",
+            "carpeta": "06-Registro-Versiones-Entregables",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "01-Arquitectura-y-Gestion-Agil",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "02-Base-de-Datos-y-Replicacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "03-Docker-CI-CD-y-Rollback",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "04-Seguridad-e-Incidencias",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "05-Monitoreo-y-Automatizacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "rodrigo",
+            "carpeta": "06-Registro-Versiones-Entregables",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "01-Arquitectura-y-Gestion-Agil",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "02-Base-de-Datos-y-Replicacion",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "03-Docker-CI-CD-y-Rollback",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "04-Seguridad-e-Incidencias",
+            "lectura_http": 207,
+            "escritura_http": 403,
+            "esperado": 403,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "05-Monitoreo-y-Automatizacion",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        },
+        {
+            "usuario": "sonia",
+            "carpeta": "06-Registro-Versiones-Entregables",
+            "lectura_http": 207,
+            "escritura_http": 201,
+            "esperado": 201,
+            "correcto": true
+        }
+    ],
+    "anonimo_http": 401,
+    "clave_incorrecta_http": 401,
+    "resultado": "correcto"
+}

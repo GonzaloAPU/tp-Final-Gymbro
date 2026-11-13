@@ -1,87 +1,86 @@
-# Punto 12 — Gestión Documental con Nextcloud (`infra/nextcloud`)
+# Punto 12: gestión documental en Nextcloud
 
-- **Responsable:** Gonzalo (`GonzaloAPU`)
-- **URL Local / Remota:** `http://localhost:8081` / `http://100.121.22.101:8081` (Tailscale)
-- **Imagen Docker:** `nextcloud:29-apache`
-- **Arquitectura de Persistencia:** *Configuration as Code* mediante Hooks oficiales (`post-installation` con `php occ`) y volumen interno de Docker (`nextcloud_data`), evitando subir volúmenes pesados o bases de datos a GitHub.
+## Preparación incluida
 
----
+El hook `hooks/post-installation/01-setup-smartgymbro.sh` llama a `setup-smartgymbro.php`.
+Puede ejecutarse durante una instalación nueva o manualmente en una existente.
+No escribe documentos directamente en `data/`, ni cambia tablas SQL: utiliza las APIs de Nextcloud.
 
-## 1. Cumplimiento de las 8 Actividades de la Consigna
+- Crea seis carpetas compartidas bajo `SmartGymBro-TP-Final`, propiedad de `gonzalo`.
+- Crea los cinco integrantes y los grupos del equipo. Conserva las contraseñas de usuarios existentes.
+- Nuevas cuentas: contraseña aleatoria distinta, no guardada ni mostrada. Establecer una contraseña personal después mediante administración o `occ user:resetpassword` interactivo.
+- Gonzalo administra; cada integrante puede leer todas las carpetas, editar su área y el registro de entregables. No se delega volver a compartir.
+- Deniega enlaces públicos, subida pública, compartir por grupos y volver a compartir. Si detecta cuentas ajenas o comparticiones inesperadas, termina con error para revisión manual; no las elimina automáticamente.
+- Importa únicamente una lista cerrada de documentos técnicos y diez PDF verificados por SHA-256. No copia `.env`, claves ni todo el repositorio.
+- Reutiliza archivos idénticos. Conserva revisiones anteriores de los informes por hash en `06-Registro-Versiones-Entregables/Versiones-PDF`, además de activar `files_versions`.
+- Genera `REGISTRO-INFORMES.md`, `manifest.json`, `MATRIZ-PERMISOS.md` y `VERIFICACION-PUNTO12.json`.
 
-| # | Actividad solicitada | Implementación en SmartGymBro |
+## Responsables de informes
+
+| Responsable | Informes | Carpeta |
 |---|---|---|
-| **1** | Desplegar Nextcloud o utilizar una instancia autorizada | Contenedor `gymbro-nextcloud` en puerto `8081` integrado en [`docker-compose.yml`](../../docker-compose.yml) y [`infra/nextcloud/compose.yaml`](./compose.yaml). |
-| **2** | Crear una estructura de carpetas | Árbol documental estandarizado `SmartGymBro-TP-Final/` con 6 subdirectorios temáticos precargados desde [`skeleton/`](./skeleton/SmartGymBro-TP-Final/). |
-| **3** | Definir permisos de acceso | Grupos RBAC creados automáticamente (`Rol-Admin-Arquitectura`, `Rol-DBA-Datos`, `Rol-DevOps-CI-CD`, `Rol-SecOps-Calidad`, `Rol-Observabilidad-SRE` y `SmartGymBro-Equipo`). |
-| **4** | Almacenar la documentación del proyecto | Sincronización automática de `docs/` del repositorio hacia las carpetas temáticas durante el hook de inicialización. |
-| **5** | Centralizar informes de pruebas, configuraciones y reportes | Incluye informes de monitoreo Prometheus/Grafana, matriz de amenazas MantisBT, esquema SQL en español y plan de Rollback. |
-| **6** | Registrar las versiones relevantes de los entregables | App nativa `files_versions` habilitada + registro formal en [`CONTROL-DE-VERSIONES-ENTREGABLES.md`](./skeleton/SmartGymBro-TP-Final/06-Registro-Versiones-Entregables/CONTROL-DE-VERSIONES-ENTREGABLES.md). |
-| **7** | Evitar almacenar secretos sin protección | Ningún volumen de datos ni archivo `.env` se sube a Git; normativa documentada en [`POLITICA-PROTECCION-SECRETOS.md`](./skeleton/SmartGymBro-TP-Final/04-Seguridad-e-Incidencias/POLITICA-PROTECCION-SECRETOS.md). |
-| **8** | Verificar el acceso únicamente a los usuarios autorizados | Creación exclusiva de las 5 cuentas del equipo (`gonzalo`, `facundo`, `aldo`, `rodrigo`, `sonia`), subida pública deshabilitada (`shareapi_allow_public_upload=no`) y compartición restringida al grupo (`shareapi_only_share_with_group_members=yes`). |
+| Facundo | Puntos 4, 5 (optimización) y 6 | 02-Base-de-Datos-y-Replicacion |
+| Aldo Dante, cuenta `aldo` | Scrum/DevOps y puntos 7, 8, 9 | 03-Docker-CI-CD-y-Rollback |
+| Rodrigo | Seguridad e incidencias, puntos 11 y 14 | 04-Seguridad-e-Incidencias |
+| Sonia | Monitoreo Prometheus/Grafana y flujos n8n | 05-Monitoreo-y-Automatizacion |
 
----
+La atribución sigue los archivos y la identificación entregada por el equipo.
+El propietario técnico central es Gonzalo; la autoría queda en el registro.
+Los originales de Descargas se conservan sin cambios. Tras revisar las 56 páginas, se redactaron las copias del punto 4 y de monitoreo que mostraban credenciales. El manifiesto conserva el hash original y el publicable; las revisiones inseguras se retiraron de Nextcloud.
 
-## 2. Entregable 1: Estructura Documental
+## Ejecutar sobre esta instalación
 
-```text
-SmartGymBro-TP-Final/
-├── 00-Estructura-y-Matriz-Permisos.md
-├── 01-Arquitectura-y-Gestion-Agil/
-│   ├── ASIGNACION.md
-│   ├── BIENVENIDA.md
-│   ├── CRONOGRAMA.md
-│   ├── FLUJO-GIT.md
-│   └── INTEGRACION.md
-├── 02-Base-de-Datos-y-Replicacion/
-│   ├── DIAGRAMA-BASE-DE-DATOS-ES.md
-│   ├── DIAGRAMA-BASE-DE-DATOS.md
-│   ├── MARCAS-PERSONALES.md
-│   └── NOMBRES-BASE-ESPANOL.md
-├── 03-Docker-CI-CD-y-Rollback/
-│   ├── ANGULAR-22.md
-│   ├── CONFIGURACION-GITHUB.md
-│   ├── ROLLBACK.md
-│   └── VALIDACION-INICIAL.md
-├── 04-Seguridad-e-Incidencias/
-│   ├── MATRIZ-AMENAZAS-MANTIS.md
-│   ├── POLITICA-PROTECCION-SECRETOS.md
-│   └── SEGURIDAD-2026-10-26.md
-├── 05-Monitoreo-y-Automatizacion/
-│   └── INFORME-MONITOREO-GRAFANA-PROMETHEUS.md
-└── 06-Registro-Versiones-Entregables/
-    └── CONTROL-DE-VERSIONES-ENTREGABLES.md
-```
-
----
-
-## 3. Entregable 2: Matriz de Permisos (RBAC)
-
-| Usuario | Rol en el Equipo | Grupos Asignados | `01-Arquitectura` | `02-Base-Datos` | `03-Docker-CI-CD` | `04-Seguridad` | `05-Monitoreo` | `06-Entregables` |
-|---|---|---|---|---|---|---|---|---|
-| `gonzalo` | Project Lead & Arquitectura | `admin`, `Rol-Admin-Arquitectura`, `SmartGymBro-Equipo` | **R/W/Admin** | **R/W/Admin** | **R/W/Admin** | **R/W/Admin** | **R/W/Admin** | **R/W/Admin** |
-| `facundo` | DBA & PostgreSQL 17 | `Rol-DBA-Datos`, `SmartGymBro-Equipo` | Lectura (`R`) | **Lectura/Escritura (`R/W`)** | Lectura (`R`) | Lectura (`R`) | Lectura (`R`) | **Lectura/Escritura (`R/W`)** |
-| `aldo` | DevOps, Docker & CI/CD | `Rol-DevOps-CI-CD`, `SmartGymBro-Equipo` | Lectura (`R`) | Lectura (`R`) | **Lectura/Escritura (`R/W`)** | Lectura (`R`) | Lectura (`R`) | **Lectura/Escritura (`R/W`)** |
-| `rodrigo` | SecOps & MantisBT | `Rol-SecOps-Calidad`, `SmartGymBro-Equipo` | Lectura (`R`) | Lectura (`R`) | Lectura (`R`) | **Lectura/Escritura (`R/W`)** | Lectura (`R`) | **Lectura/Escritura (`R/W`)** |
-| `sonia` | SRE, Monitoreo & n8n | `Rol-Observabilidad-SRE`, `SmartGymBro-Equipo` | Lectura (`R`) | Lectura (`R`) | Lectura (`R`) | Lectura (`R`) | **Lectura/Escritura (`R/W`)** | **Lectura/Escritura (`R/W`)** |
-| *No autenticado* | Externo | *Ninguno* | **Denegado** | **Denegado** | **Denegado** | **Denegado** | **Denegado** | **Denegado** |
-
-### Credenciales iniciales de prueba (Generadas por `01-setup-smartgymbro.sh`)
-- **Cuenta de sistema:** `admin` / `smartgymbro_tp`
-- **Cuentas nominadas del equipo (`gonzalo`, `facundo`, `aldo`, `rodrigo`, `sonia`):** contraseña inicial `SmartGym2026!` (configurable mediante la variable de entorno `NEXTCLOUD_TEAM_PASSWORD`).
-
----
-
-## 4. Despliegue y Verificación (Evidencias)
+Desde la raíz de `tp-Final-Gymbro`, comprobar que `NEXTCLOUD_ADMIN_PASSWORD` está definida en el `.env` privado.
+No subir ese archivo ni incluir contraseñas en comandos o informes.
 
 ```bash
-# 1. Levantar Nextcloud desde el docker-compose.yml de la raíz
-docker compose up -d nextcloud
-
-# 2. Verificar la ejecución del hook de aprovisionamiento
-docker logs gymbro-nextcloud
-
-# 3. Verificar usuarios y grupos autorizados mediante occ
-docker exec -u www-data gymbro-nextcloud php occ user:list
-docker exec -u www-data gymbro-nextcloud php occ group:list
+docker compose up -d --no-deps nextcloud
+docker exec gymbro-nextcloud sh /docker-entrypoint-hooks.d/post-installation/01-setup-smartgymbro.sh --check
+docker exec gymbro-nextcloud sh /docker-entrypoint-hooks.d/post-installation/01-setup-smartgymbro.sh
+docker exec gymbro-nextcloud sh /docker-entrypoint-hooks.d/post-installation/01-setup-smartgymbro.sh --verify
 ```
+
+El primer comando actualiza el montaje de informes y conserva el volumen existente.
+El hook post-installation solo se dispara automáticamente en una instalación nueva;
+reiniciar un contenedor ya instalado no ejecuta el aprovisionamiento por sí solo.
+
+Configurar cada contraseña sin mostrarla en la terminal:
+
+```bash
+docker exec -it --user www-data gymbro-nextcloud php occ user:resetpassword gonzalo
+# Repetir para facundo, aldo, rodrigo y sonia.
+```
+
+La cuenta `admin` de instalación mantiene sus privilegios. No se cambia su contraseña.
+No se envían correos ni notificaciones externas durante esta preparación.
+
+## Verificaciones y evidencias
+
+`--check` valida los diez PDF y el manifiesto sin cargar ni modificar Nextcloud.
+`--verify` comprueba las 24 comparticiones, sus destinatarios y permisos, los PDF cargados
+y la ausencia de comparticiones inesperadas en el árbol gestionado. No sustituye pruebas de login.
+
+Pruebas previas se ejecutan en un contenedor descartable, sin puertos publicados ni red externa:
+instalación completa, segunda ejecución, SHA-256, lectura WebDAV de las seis áreas por cada integrante,
+escritura permitida en el área propia/registro y rechazada en las demás, y rechazo de acceso anónimo.
+Las pruebas de esa instancia no certifican automáticamente la instancia real.
+
+Para cerrar el punto, guardar evidencias de la ejecución real, inicio de sesión de cada integrante,
+lectura y escritura según la matriz y acceso anónimo rechazado. Cualquier actualización de informes
+requiere revisar su contenido y actualizar los hashes del manifiesto. El script no inventa revisiones
+ni fechas anteriores de los entregables.
+
+## Cierre aplicado a la instancia real
+
+Se aplicaron las cuentas y las seis áreas y se verificaron 30 combinaciones de usuario/carpeta con WebDAV, además del rechazo anónimo y de clave incorrecta (HTTP 401). Evidencias en `evidencias/verificacion-instancia-real.json` y en el área 06 de Nextcloud.
+
+Los cinco integrantes tienen claves iniciales únicas en un archivo privado con permisos 0600 fuera de Git y Nextcloud. La cuenta admin no se modificó. Cada integrante debe cambiar su clave inicial.
+
+`sincronizar-cierre.php` incorpora el paquete adicional de `informes/cierre`: informe de Gonzalo, editable, captura Trello y evidencias. La revisión 1.0 y la 1.1 del informe de administración se conservan por hash. El modo `--verify` también comprueba el paquete adicional. El archivo privado de contraseñas nunca se incluye en los montajes documentales.
+
+## Documentación de la actualización
+
+- [Informe breve de la actualización aplicada](INFORME-ACTUALIZACION.md).
+- [Guía del repositorio y comandos de actualización](GUIA-REPOSITORIO.md).
+
+Ambos documentos también se incorporan al área 06 de Nextcloud mediante el paquete de cierre.
