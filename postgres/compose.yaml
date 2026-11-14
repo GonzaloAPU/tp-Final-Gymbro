@@ -1,111 +1,232 @@
 services:
-  # NODO PRIMARIO (MASTER)
-  postgres-primary:
-    image: postgres:17-alpine
-    container_name: gymbro-postgres-primary
+  # ==============================================================================
+  # 1. HAPROXY - ENRUTADOR Y BALANCEADOR DE ALTA DISPONIBILIDAD
+  # ==============================================================================
+  haproxy:
+    image: haproxy:3.2-alpine
+    container_name: gymbro-haproxy
     restart: unless-stopped
-    command:
-      - "postgres"
-      - "-c"
-      - "wal_level=replica"
-      - "-c"
-      - "max_wal_senders=10"
-      - "-c"
-      - "max_replication_slots=10"
-      - "-c"
-      - "hot_standby=on"
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      # Puerto primario 55433 aislado en loopback
-      - "127.0.0.1:${POSTGRES_PORT:-55433}:5432"
     volumes:
-      - postgres_tp_data:/var/lib/postgresql/data
-      - ./backups:/backups:ro
-      - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
-      - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
-      - ./sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      # Puerto escritura (55433 en host -> 5000 en HAProxy)
+      - "127.0.0.1:${POSTGRES_PORT:-55433}:5000"
+      - "127.0.0.1:5000:5000"
+      # Puerto lectura (55434 en host -> 5001 en HAProxy)
+      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-55434}:5001"
+      - "127.0.0.1:5001:5001"
+      # Dashboard estadisticas HAProxy
+      - "127.0.0.1:7000:7000"
+    depends_on:
+      - db-node1
+      - db-node2
+      - db-node3
     networks:
       gymbro_network:
         aliases:
+          - haproxy
           - postgres
           - postgres-primary
           - gymbro-postgres-primary
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
-
-  # NODO STANDBY (REPLICA) 
-  postgres-replica:
-    image: postgres:17-alpine
-    container_name: gymbro-postgres-replica
+  # ==============================================================================
+  # 2. CLUSTER DE CONSENSO ETCD (3 NODOS PARA QUORUM 2/3)
+  # ==============================================================================
+  etcd1:
+    image: gcr.io/etcd-development/etcd:v3.5.31
+    container_name: gymbro-etcd1
     restart: unless-stopped
-    ports:
-      # Puerto replica 55434 para consultas de lectura y failover
-      - "127.0.0.1:${POSTGRES_REPLICA_PORT:-55434}:5432"
-    environment:
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd1
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd1:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd1:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=smartgymbro-etcd
+      - --initial-cluster-state=new
     volumes:
-      - postgres_replica_data:/var/lib/postgresql/data
+      - etcd1_data:/etcd-data
     networks:
       gymbro_network:
         aliases:
-          - postgres-replica
-          - gymbro-postgres-replica
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    entrypoint: >
-      sh -c "
-      if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
-        echo '[REPLICA] Clonando cluster primario mediante pg_basebackup...';
-        until PGPASSWORD=${POSTGRES_REPLICATION_PASSWORD:-replicator_password123} pg_basebackup -h postgres-primary -p 5432 -U ${POSTGRES_REPLICATION_USER:-replicator} -D /var/lib/postgresql/data -v -P -X stream -R --slot=standby_slot_1; do
-          echo '[REPLICA] Esperando disponibilidad del nodo primario...';
-          sleep 2;
-        done;
-        echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.auto.conf;
-        chown -R postgres:postgres /var/lib/postgresql/data;
-        chmod 700 /var/lib/postgresql/data;
-        echo '[REPLICA] Clonacion exitosa. Iniciando modo Hot Standby...';
-      fi;
-      exec gosu postgres postgres
-      "
+          - etcd1
 
-  # SERVICIO DE BACKUPS AUTOMATICOS (PG_DUMP PROGRAMADO)
+  etcd2:
+    image: gcr.io/etcd-development/etcd:v3.5.31
+    container_name: gymbro-etcd2
+    restart: unless-stopped
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd2
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd2:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd2:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=smartgymbro-etcd
+      - --initial-cluster-state=new
+    volumes:
+      - etcd2_data:/etcd-data
+    networks:
+      gymbro_network:
+        aliases:
+          - etcd2
+
+  etcd3:
+    image: gcr.io/etcd-development/etcd:v3.5.31
+    container_name: gymbro-etcd3
+    restart: unless-stopped
+    command:
+      - /usr/local/bin/etcd
+      - --name=etcd3
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd3:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://etcd3:2380
+      - --initial-cluster=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      - --initial-cluster-token=smartgymbro-etcd
+      - --initial-cluster-state=new
+    volumes:
+      - etcd3_data:/etcd-data
+    networks:
+      gymbro_network:
+        aliases:
+          - etcd3
+
+  # ==============================================================================
+  # 3. NODOS POSTGRESQL + PATRONI
+  # ==============================================================================
+  db-node1:
+    build:
+      context: ./patroni
+    image: smartgymbro-patroni:17
+    container_name: gymbro-db-node1
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: db-node1
+      PATRONI_SCOPE: smartgymbro_cluster
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: db-node1:5432
+      PATRONI_RESTAPI_CONNECT_ADDRESS: db-node1:8008
+      PATRONI_SUPERUSER_USERNAME: ${POSTGRES_USER:-smartgymbro_tp}
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      PATRONI_REPLICATION_USERNAME: ${POSTGRES_REPLICATION_USER:-replicator}
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password123}
+    volumes:
+      - db_node1_data:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+      - ./sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+    networks:
+      gymbro_network:
+        aliases:
+          - db-node1
+
+  db-node2:
+    build:
+      context: ./patroni
+    image: smartgymbro-patroni:17
+    container_name: gymbro-db-node2
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: db-node2
+      PATRONI_SCOPE: smartgymbro_cluster
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: db-node2:5432
+      PATRONI_RESTAPI_CONNECT_ADDRESS: db-node2:8008
+      PATRONI_SUPERUSER_USERNAME: ${POSTGRES_USER:-smartgymbro_tp}
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      PATRONI_REPLICATION_USERNAME: ${POSTGRES_REPLICATION_USER:-replicator}
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password123}
+    volumes:
+      - db_node2_data:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+      - ./sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+    networks:
+      gymbro_network:
+        aliases:
+          - db-node2
+
+  db-node3:
+    build:
+      context: ./patroni
+    image: smartgymbro-patroni:17
+    container_name: gymbro-db-node3
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: db-node3
+      PATRONI_SCOPE: smartgymbro_cluster
+      PATRONI_ETCD3_HOSTS: etcd1:2379,etcd2:2379,etcd3:2379
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: db-node3:5432
+      PATRONI_RESTAPI_CONNECT_ADDRESS: db-node3:8008
+      PATRONI_SUPERUSER_USERNAME: ${POSTGRES_USER:-smartgymbro_tp}
+      PATRONI_SUPERUSER_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      PATRONI_REPLICATION_USERNAME: ${POSTGRES_REPLICATION_USER:-replicator}
+      PATRONI_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-replicator_password123}
+    volumes:
+      - db_node3_data:/var/lib/postgresql/data
+      - ./backups:/backups
+      - ./sql/01-bootstrap.sql:/docker-entrypoint-initdb.d/01-bootstrap.sql:ro
+      - ./sql/08-nombres-espanol.sql:/docker-entrypoint-initdb.d/08-nombres-espanol.sql:ro
+      - ./sql/09-init-replication.sql:/docker-entrypoint-initdb.d/09-init-replication.sql:ro
+    depends_on:
+      - etcd1
+      - etcd2
+      - etcd3
+    networks:
+      gymbro_network:
+        aliases:
+          - db-node3
+
+  # ==============================================================================
+  # 4. SERVICIO DAEMON DE BACKUPS AUTOMATICOS (VIA HAPROXY)
+  # ==============================================================================
   postgres-backup:
     image: postgres:17-alpine
     container_name: gymbro-postgres-backup
     restart: unless-stopped
     environment:
-      PGHOST: postgres-primary
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
+      PGHOST: haproxy
+      PGPORT: 5000
+      PGUSER: ${POSTGRES_USER:-smartgymbro_tp}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      PGDATABASE: ${POSTGRES_DB:-smartgymbro_tp}
     volumes:
       - ./backups:/backups
       - ./scripts/backup-cron.sh:/backup-cron.sh:ro
     networks:
       - gymbro_network
     depends_on:
-      postgres-primary:
-        condition: service_healthy
+      - haproxy
     entrypoint: ["sh", "/backup-cron.sh"]
 
-  # PGADMIN 
+  # ==============================================================================
+  # 5. PGADMIN 4
+  # ==============================================================================
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: gymbro-pgadmin
     restart: unless-stopped
     mem_limit: 512m
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@smartgymbro.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-pgadmin_secure_pass_2026}
     ports:
       - "127.0.0.1:${PGADMIN_PORT:-5051}:80"
     volumes:
@@ -114,8 +235,7 @@ services:
     networks:
       - gymbro_network
     depends_on:
-      postgres-primary:
-        condition: service_healthy
+      - haproxy
 
 networks:
   gymbro_network:
@@ -123,9 +243,10 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_tp_data:
-    name: smartgymbro_tp_postgres_data
-  postgres_replica_data:
-    name: smartgymbro_tp_postgres_replica_data
+  etcd1_data:
+  etcd2_data:
+  etcd3_data:
+  db_node1_data:
+  db_node2_data:
+  db_node3_data:
   pgadmin_tp_data:
-    name: smartgymbro_tp_pgadmin_data

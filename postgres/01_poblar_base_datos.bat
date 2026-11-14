@@ -60,13 +60,16 @@ echo.
 :: 3. LEVANTAR SERVICIOS POSTGRESQL EN DOCKER (SI NO ESTAN ACTIVOS)
 :: -----------------------------------------------------------------
 echo [2/5] Verificando contenedores de base de datos...
-docker exec gymbro-postgres-primary pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+docker exec gymbro-db-node1 pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+if %errorlevel% neq 0 (
+    docker exec gymbro-postgres-primary pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+)
 if %errorlevel% neq 0 (
     echo [INFO] Iniciando servicios de PostgreSQL con Docker Compose...
     if exist "%SCRIPT_DIR%\compose.yaml" (
         docker compose -f "%SCRIPT_DIR%\compose.yaml" up -d
     ) else if exist "%ROOT_DIR%\docker-compose.yml" (
-        docker compose -f "%ROOT_DIR%\docker-compose.yml" up -d postgres pgadmin
+        docker compose -f "%ROOT_DIR%\docker-compose.yml" up -d haproxy db-node1 db-node2 db-node3 etcd1 etcd2 etcd3 pgadmin
     ) else (
         echo [ERROR] No se encontro compose.yaml ni docker-compose.yml.
         pause
@@ -76,10 +79,13 @@ if %errorlevel% neq 0 (
     echo Esperando a que PostgreSQL acepte conexiones...
     :wait_pg
     timeout /t 2 /nobreak >nul
-    docker exec gymbro-postgres-primary pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+    docker exec gymbro-db-node1 pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
     if %errorlevel% neq 0 (
-        echo ...esperando inicializacion de PostgreSQL...
-        goto wait_pg
+        docker exec gymbro-postgres-primary pg_isready -U smartgymbro_tp -d smartgymbro_tp >nul 2>&1
+        if %errorlevel% neq 0 (
+            echo ...esperando inicializacion de PostgreSQL en el cluster Patroni...
+            goto wait_pg
+        )
     )
 )
 echo [OK] PostgreSQL 17 esta listo y saludable en el puerto 55433.

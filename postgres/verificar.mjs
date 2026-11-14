@@ -5,7 +5,7 @@ import {User,Exercise} from '../backend/src/models/index.js';
 try{
  assert.equal(process.env.DB_CONNECTION_MODE,'LOCAL','Solo permite la base local del TP');
  const url=new URL(process.env.DATABASE_URL);
- assert.ok(['127.0.0.1','localhost','postgres-primary'].includes(url.hostname),'No conectar a bases externas');
+ assert.ok(['127.0.0.1','localhost','postgres-primary','haproxy'].includes(url.hostname),'No conectar a bases externas');
  assert.equal(url.pathname,'/smartgymbro_tp','Se requiere la base separada del TP');
  await sequelize.authenticate();
  const [tables]=await sequelize.query("SELECT count(*)::int AS total FROM information_schema.tables WHERE table_schema='gymbro' AND table_type='BASE TABLE'");
