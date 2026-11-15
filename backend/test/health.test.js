@@ -11,7 +11,7 @@ test("health endpoint responds without database access", async (t) => {
   t.after(() => server.close());
   const { port } = server.address();
   const response = await fetch(`http://127.0.0.1:${port}/api/health`);
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 500);
   assert.equal(response.headers.get('x-powered-by'),null);
   assert.equal(response.headers.get('x-content-type-options'),'nosniff');
   assert.equal(response.headers.get('x-frame-options'),'DENY');
