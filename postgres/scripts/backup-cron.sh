@@ -13,7 +13,7 @@ while true; do
   
   echo ""
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iniciando pg_dump de la base de datos '${PGDATABASE}'..."
-  pg_dump -h "${PGHOST}" -U "${PGUSER}" -d "${PGDATABASE}" -F c -b -v -f "${BACKUP_FILE}"
+  pg_dump -h "${PGHOST}" -p "${PGPORT:-5000}" -U "${PGUSER}" -d "${PGDATABASE}" -F c -b -v -f "${BACKUP_FILE}"
   
   if [ -f "${BACKUP_FILE}" ]; then
     SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)

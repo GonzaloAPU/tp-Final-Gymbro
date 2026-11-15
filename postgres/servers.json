@@ -1,18 +1,45 @@
 {
   "Servers": {
     "1": {
-      "Name": "SmartGymBro Primario (Master)",
+      "Name": "SmartGymBro HAProxy - Escritura (Master/Lider)",
       "Group": "SmartGymBro Cluster",
-      "Host": "postgres-primary",
-      "Port": 5432,
+      "Host": "haproxy",
+      "Port": 5000,
       "MaintenanceDB": "smartgymbro_tp",
       "Username": "smartgymbro_tp",
       "SSLMode": "prefer"
     },
     "2": {
-      "Name": "SmartGymBro Replica (Standby)",
+      "Name": "SmartGymBro HAProxy - Lectura (Replicas Balanceadas)",
       "Group": "SmartGymBro Cluster",
-      "Host": "postgres-replica",
+      "Host": "haproxy",
+      "Port": 5001,
+      "MaintenanceDB": "smartgymbro_tp",
+      "Username": "smartgymbro_tp",
+      "SSLMode": "prefer"
+    },
+    "3": {
+      "Name": "Nodo 1 (db-node1)",
+      "Group": "SmartGymBro Nodos Directos",
+      "Host": "db-node1",
+      "Port": 5432,
+      "MaintenanceDB": "smartgymbro_tp",
+      "Username": "smartgymbro_tp",
+      "SSLMode": "prefer"
+    },
+    "4": {
+      "Name": "Nodo 2 (db-node2)",
+      "Group": "SmartGymBro Nodos Directos",
+      "Host": "db-node2",
+      "Port": 5432,
+      "MaintenanceDB": "smartgymbro_tp",
+      "Username": "smartgymbro_tp",
+      "SSLMode": "prefer"
+    },
+    "5": {
+      "Name": "Nodo 3 (db-node3)",
+      "Group": "SmartGymBro Nodos Directos",
+      "Host": "db-node3",
       "Port": 5432,
       "MaintenanceDB": "smartgymbro_tp",
       "Username": "smartgymbro_tp",
