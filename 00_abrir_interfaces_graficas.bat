@@ -31,7 +31,7 @@ echo    * Clave BD (smartgymbro_tp): admin123
 echo 4. Grafana Dashboards        http://localhost:3001     admin / admin
 echo 5. Prometheus Metricas       http://localhost:9090     (Acceso Directo Sin Login)
 echo 6. n8n Automatizacion        http://localhost:5678     admin@gymbro.tp / Q2OoTrGJHVosB9f1Aa1
-echo 7. Mantis Bug Tracker        http://localhost:8089     administrator / root_password_seguro
+echo 7. Mantis Bug Tracker        http://localhost:8089     administrator / admin1234 (o cualquier miembro / admin1234)
 echo 8. Nextcloud Documental      http://localhost:8081     aldo / SmartGym2026! (o gonzalo)
 echo 9. cAdvisor Docker           http://localhost:8080     (Metricas Contenedores)
 echo -------------------------------------------------------------------------------

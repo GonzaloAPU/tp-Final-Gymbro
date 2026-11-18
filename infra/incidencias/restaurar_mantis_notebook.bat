@@ -100,7 +100,7 @@ echo Podes ingresar ahora mismo desde tu navegador en:
 echo   ?? http://localhost:8089/
 echo.
 echo CREDENCIALES DISPONIBLES:
-echo   - Administrador general:   administrator / root_password_seguro (o admin1234)
+echo   - Administrador general:   administrator / admin1234
 echo   - Rodrigo (QA y Soporte):  rodrigo_qa    / admin1234
 echo   - Facundo (Base de Datos): facundo_db    / admin1234
 echo   - Aldo (Frontend/DevOps):  aldo_front    / admin1234
