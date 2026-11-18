@@ -17,7 +17,7 @@ import { ApiEndpointService } from '../services/api-endpoint.service';
   template: `
     <section class="auth-page">
       <form class="auth-card" (submit)="submit($event, email.value, password.value)">
-        <span class="kicker">INICIAR SESIÓN</span>
+        <span class="kicker">GONZA A MAIN NOOOO!!!</span>
         <h2>Iniciá sesión</h2>
         <p>Si ya tenés una cuenta de Gymbro, ingresá tus datos.</p>
         <label>Email<input #email type="email" autocomplete="email" placeholder="vos@email.com" required></label>
