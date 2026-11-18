@@ -24,8 +24,10 @@ echo ---------------------------------------------------------------------------
 echo SERVICIO                     URL                       USUARIO / PASSWORD
 echo -------------------------------------------------------------------------------
 echo 1. SmartGymBro App (Front)   http://localhost:4300     (Aplicacion Web Atletas)
-echo 2. HAProxy Cluster HA        http://localhost:7000     (Panel Metricas Patroni en Vivo)
-echo 3. pgAdmin 4 PostgreSQL      http://localhost:5051     admin@gymbro.tp / admin123
+echo 2. HAProxy Cluster HA (Web)  http://localhost:7000     (Dashboard Estadisticas Patroni)
+echo    * AVISO: Los puertos 5000 y 5001 son TCP para la BD, no son paginas web.
+echo 3. pgAdmin 4 PostgreSQL      http://localhost:5051     admin@smartgymbro.com / pgadmin_secure_pass_2026
+echo    * Clave BD (smartgymbro_tp): admin123
 echo 4. Grafana Dashboards        http://localhost:3001     admin / admin
 echo 5. Prometheus Metricas       http://localhost:9090     (Acceso Directo Sin Login)
 echo 6. n8n Automatizacion        http://localhost:5678     admin@gymbro.tp / Q2OoTrGJHVosB9f1Aa1
