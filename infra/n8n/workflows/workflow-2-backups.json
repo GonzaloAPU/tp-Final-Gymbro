@@ -1,0 +1,232 @@
+{
+  "name": "WF2 – Verificación de Backups",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-02",
+      "name": "Schedule – Diario 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// La copia de seguridad la genera el servicio 'gymbro-postgres-backup'\n// (docker-compose.yml raiz, cada 12 h) en ./postgres/backups, montada\n// read-only en /data/pg-backups. Este nodo NO genera backups: selecciona\n// el dump mas reciente y reporta los fallidos (dumps de ~0 bytes que deja\n// el servicio cuando pg_dump falla).\nconst fs = require('fs');\nconst DIR = '/data/pg-backups';\nconst now = Date.now();\nconst startedAt = new Date(now).toISOString();\n\nlet files = [];\ntry {\n  files = fs.readdirSync(DIR).filter(f => /^smartgymbro_backup_.*\\.dump$/.test(f));\n} catch (e) {\n  return [{ json: { backupFound: false, filename: '', backupPath: '', startedAt, exitCode: 1,\n    error: 'No se puede leer ' + DIR + ': ' + String(e.message || e),\n    stderr: String(e.message || e), totalDumps: 0, failedDumps: 0 } }];\n}\n\nconst items = files.map(f => {\n  const p = DIR + '/' + f;\n  try { const st = fs.statSync(p); return { file: f, path: p, size: st.size, mtimeMs: st.mtimeMs }; }\n  catch { return null; }\n}).filter(Boolean).sort((a, b) => b.mtimeMs - a.mtimeMs);\n\nconst totalDumps = items.length;\nconst failedDumps = items.filter(i => i.size < 1024).length;\n\nif (items.length === 0) {\n  return [{ json: { backupFound: false, filename: '', backupPath: '', startedAt, exitCode: 1,\n    error: 'No se encontro ningun smartgymbro_backup_*.dump en ' + DIR,\n    stderr: 'directorio vacio o sin dumps', totalDumps, failedDumps } }];\n}\n\nconst newest = items[0];\nreturn [{\n  json: {\n    backupFound: true,\n    filename: newest.file,\n    backupPath: newest.path,\n    fileSizeBytes: newest.size,\n    fileMtimeMs: newest.mtimeMs,\n    ageMinutes: Math.round((now - newest.mtimeMs) / 60000),\n    totalDumps,\n    failedDumps,\n    startedAt,\n    exitCode: 0,\n    stdout: '',\n    stderr: ''\n  }\n}];\n"
+      },
+      "id": "code-select-backup-02",
+      "name": "Seleccionar Backup Reciente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Verificar el backup generado por el servicio externo:\n//  1) el servicio llego a crear al menos un dump\n//  2) el mas reciente existe y supera el tamano minimo (los reales pesan ~400 MB;\n//     dumps de ~0 bytes indican un pg_dump fallido del servicio)\n//  3) su antiguedad no supera 14 h (el servicio corre cada 12 h)\nconst fs = require('fs');\nconst params = $input.item.json;\nconst MAX_AGE_MIN = 14 * 60;\nconst MIN_SIZE = 10 * 1024 * 1024; // 10 MB\n\nlet exists = false, size = 0, mtimeMs = 0, verifyError = '', ageMinutes = null;\nif (params.backupFound) {\n  try {\n    const st = fs.statSync(params.backupPath);\n    exists = st.isFile();\n    size = st.size;\n    mtimeMs = st.mtimeMs;\n    ageMinutes = Math.round((Date.now() - mtimeMs) / 60000);\n  } catch (e) {\n    verifyError = String(e.message || e);\n  }\n}\n\nconst genOk = params.backupFound === true;\nconst fileOk = exists && size >= MIN_SIZE;\nconst freshEnough = mtimeMs > 0 && ageMinutes <= MAX_AGE_MIN;\nconst isValid = genOk && fileOk && freshEnough && !verifyError;\n\nlet error = '';\nif (!isValid) {\n  if (!genOk) error = params.error || 'No se encontro ningun backup en /data/pg-backups';\n  else if (verifyError) error = `No se puede leer el archivo: ${verifyError}`;\n  else if (size < MIN_SIZE) error = `Backup sospechosamente pequeno (${size} bytes): posible pg_dump fallido del servicio (dumps fallidos detectados: ${params.failedDumps || 0})`;\n  else if (!freshEnough) error = `Backup desactualizado: ${ageMinutes} min de antiguedad (maximo ${MAX_AGE_MIN} min). El servicio gymbro-postgres-backup podria estar caido`;\n}\n\nreturn [{\n  json: {\n    ...params,\n    fileExists: exists,\n    fileSizeBytes: size,\n    fileSizeMB: (size / 1024 / 1024).toFixed(2),\n    fileMtime: mtimeMs ? new Date(mtimeMs).toISOString() : '',\n    ageMinutes,\n    genOk,\n    fileOk,\n    freshEnough,\n    isValid,\n    error\n  }\n}];\n"
+      },
+      "id": "code-verify-file-02",
+      "name": "Verificar Archivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Verificar contenido legible del dump: pg_restore --list (cuenta objetos).\n// pg_restore --list solo lee el archivo; NO conecta a la base principal.\n// Esta comprobacion exige exitCode 0 y objetos > 0: NO usarlo como sustituto de una restauracion real.\nconst { execSync } = require('child_process');\nconst params = $input.item.json;\n\nif (!params.backupPath) {\n  return [{ json: { ...params, objectCount: 0, restoreExitCode: 1, restoreError: 'sin archivo de backup', contentOk: false } }];\n}\n\nlet objectCount = 0, stderr = '', exitCode = 0;\ntry {\n  const out = execSync('pg_restore --list ' + JSON.stringify(params.backupPath), { encoding: 'utf8', shell: '/bin/sh', maxBuffer: 64 * 1024 * 1024 });\n  objectCount = out.split('\\n').filter(l => l.trim().length > 0).length;\n} catch (e) {\n  stderr = e.stderr ? e.stderr.toString() : String(e.message || e);\n  exitCode = typeof e.status === 'number' ? e.status : 1;\n}\n\nconst contentOk = exitCode === 0 && objectCount > 0;\n\nreturn [{ json: { ...params, objectCount, restoreExitCode: exitCode, restoreError: stderr, contentOk } }];\n"
+      },
+      "id": "code-verify-restore-02",
+      "name": "Verificar Contenido (pg_restore --list)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $json.isValid && $json.contentOk }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-valid-02",
+      "name": "¿Backup Válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Backup exitoso: armar el reporte y anexar la linea al log de informes\nconst fs = require('fs');\nconst params = $input.item.json;\nconst stamp = new Date().toISOString();\n\nconst report = {\n  resultado: 'backup_exitoso',\n  filename: params.filename,\n  backupPath: params.backupPath,\n  fileSizeMB: params.fileSizeMB,\n  fileSizeBytes: params.fileSizeBytes,\n  ageMinutes: params.ageMinutes,\n  objetosEnDump: params.objectCount,\n  dumpsEnDirectorio: params.totalDumps,\n  dumpsFallidosDetectados: params.failedDumps || 0,\n  timestamp: stamp,\n  startedAt: params.startedAt\n};\n\nconsole.log('[WF2] Backup verificado exitosamente:', JSON.stringify(report));\n\nconst warn = (params.failedDumps || 0) > 0 ? ` | advertencia=${params.failedDumps} dump(s) fallido(s) en /data/pg-backups` : '';\nconst line = `[${stamp}] resultado=backup_exitoso | archivo=${report.filename} | tamano=${report.fileSizeMB}MB | antiguedad=${report.ageMinutes}min | contenido=OK(objetos=${report.objetosEnDump})${warn} | error=-\\n`;\nlet logWritten = false, logError = '';\ntry {\n  fs.appendFileSync('/data/informes/backup-log.txt', line, 'utf8');\n  logWritten = true;\n} catch (e) {\n  logError = String(e.message || e);\n}\n\nreturn [{ json: { ...report, logWritten, logError } }];\n"
+      },
+      "id": "code-write-log-02",
+      "name": "Escribir Log en Archivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Backup fallido: armar el reporte y anexar la linea al log de informes\nconst fs = require('fs');\nconst params = $input.item.json;\nconst stamp = new Date().toISOString();\n\nlet motivo = params.error || params.restoreError || 'Error desconocido';\nif (!motivo && params.exitCode !== 0) motivo = `pg_dump finalizó con código ${params.exitCode}`;\nif (!motivo && !params.contentOk) motivo = `pg_restore --list falló o el dump no contiene objetos (exitCode=${params.restoreExitCode}, objetos=${params.objectCount})`;\nif (!motivo) motivo = 'Error desconocido';\n\nconst report = {\n  resultado: 'backup_fallido',\n  filename: params.filename,\n  backupPath: params.backupPath,\n  fileSizeBytes: params.fileSizeBytes || 0,\n  ageMinutes: params.ageMinutes,\n  error: motivo,\n  exitCode: params.exitCode,\n  objetosEnDump: params.objectCount || 0,\n  dumpsEnDirectorio: params.totalDumps || 0,\n  dumpsFallidosDetectados: params.failedDumps || 0,\n  timestamp: stamp,\n  startedAt: params.startedAt\n};\n\nconsole.error('[WF2] FALLO en backup:', JSON.stringify(report));\n\nconst gen = params.genOk ? 'OK' : 'FALLO';\nconst verif = params.isValid ? 'OK' : 'FALLO';\nconst contenido = params.contentOk ? `OK(objetos=${params.objectCount})` : `FALLO(exitCode=${params.restoreExitCode}, objetos=${params.objectCount || 0})`;\n\nconst line = `[${stamp}] resultado=backup_fallido | archivo=${report.filename || '(ninguno)'} | generacion=${gen} | verificacion_archivo=${verif} | contenido=${contenido} | dumps_fallidos=${report.dumpsFallidosDetectados} | error=${motivo}\\n`;\nlet logWritten = false, logError = '';\ntry {\n  fs.appendFileSync('/data/informes/backup-log.txt', line, 'utf8');\n  logWritten = true;\n} catch (e) {\n  logError = String(e.message || e);\n}\n\nreturn [{ json: { ...report, gen, verif, contenido, logWritten, logError } }];\n"
+      },
+      "id": "code-write-fail-log-02",
+      "name": "Escribir Log de Fallo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "gsoniaemiliana@gmail.com",
+        "toEmail": "gsoniaemiliana@gmail.com",
+        "subject": "=[GYMBRO] Error en backup {{ $json.filename || 'sin archivo' }}",
+        "text": "={{ 'Se detecto un problema con el backup de gymbro (generado por el servicio gymbro-postgres-backup).\\n\\nFecha y hora: ' + $json.timestamp + '\\nArchivo: ' + ($json.filename || '(ninguno encontrado)') + '\\nEtapa: generacion=' + $json.gen + ' / verificacion_archivo=' + $json.verif + ' / contenido=' + $json.contenido + '\\nDumps fallidos en /data/pg-backups: ' + ($json.dumpsFallidosDetectados ?? 'n/d') + '\\nMotivo: ' + $json.error }}",
+        "options": {}
+      },
+      "id": "email-fail-02",
+      "name": "Notificar Error por Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        460
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "GymbroSeedSmtpAcc01",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule – Diario 03:00": {
+      "main": [
+        [
+          {
+            "node": "Seleccionar Backup Reciente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seleccionar Backup Reciente": {
+      "main": [
+        [
+          {
+            "node": "Verificar Archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Archivo": {
+      "main": [
+        [
+          {
+            "node": "Verificar Contenido (pg_restore --list)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Contenido (pg_restore --list)": {
+      "main": [
+        [
+          {
+            "node": "¿Backup Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Backup Válido?": {
+      "main": [
+        [
+          {
+            "node": "Escribir Log en Archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escribir Log de Fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escribir Log de Fallo": {
+      "main": [
+        [
+          {
+            "node": "Notificar Error por Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "",
+    "timezone": "America/Argentina/Buenos_Aires"
+  }
+}

@@ -1,0 +1,69 @@
+groups:
+  - name: gymbro
+    rules:
+      - alert: BackendDown
+        expr: probe_success{job="blackbox_backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API backend no disponible"
+          description: "El probe HTTP del blackbox exporter no responde correctamente al backend /api/health."
+
+      - alert: BackendHighLatency
+        expr: probe_duration_seconds{job="blackbox_backend"} > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia alta del backend"
+          description: "El probe HTTP supera los 2 segundos de duracion."
+
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL no disponible"
+          description: "El exportador de PostgreSQL no alcanza la base de datos o reporta caída."
+
+      - alert: HighMemoryUsage
+        expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de memoria"
+          description: "El uso de memoria supera el umbral configurado (85%)."
+
+      - alert: HighCpuUsage
+        expr: 100 * (1 - sum by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) / sum by (instance) (rate(node_cpu_seconds_total[5m]))) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de CPU"
+          description: "El uso de CPU supera el umbral configurado (85%)."
+
+      # El contenedor de inicializacion (cadvisor-layerdb-init) sale por
+      # diseno, por eso se excluye del chequeo. La alerta cubre solo los
+      # contenedores del proyecto (prefijo gymbro-) para no ruido sobre
+      # contenedores ajenos/detenidos de otros trabajos.
+      - alert: ContainerDown
+        expr: docker_container_running{name=~"gymbro-.*", name!="gymbro-cadvisor-layerdb-init"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Contenedor detenido"
+          description: "El contenedor {{ $labels.name }} no esta en ejecucion."
+
+      - alert: ContainerRestarting
+        expr: increase(docker_container_restart_count{name=~"gymbro-.*"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Contenedor reiniciandose"
+          description: "El contenedor {{ $labels.name }} se reinicio en los ultimos 10 minutos."

@@ -1,0 +1,55 @@
+[
+  {
+    "archivo": "Informe_Gonzalo_Administracion_Nextcloud_Trello.pdf",
+    "carpeta": "01-Arquitectura-y-Gestion-Agil",
+    "responsable": "gonzalo",
+    "sha256": "0f0e229da6518986c92a6934f250b4e23063bcfd130d1f71a303856221367bb1",
+    "version_anterior": {
+      "archivo": "Informe_Gonzalo_Administracion_Nextcloud_Trello_v1.0.pdf",
+      "version": "1.0",
+      "sha256": "6ce0b9444d463580c0ba503d18875cde4d16f4c82088b3b6b5dcb614f1c6ebab"
+    }
+  },
+  {
+    "archivo": "Informe_Gonzalo_Administracion_Nextcloud_Trello.docx",
+    "carpeta": "01-Arquitectura-y-Gestion-Agil",
+    "responsable": "gonzalo",
+    "sha256": "adf142107765d57cf67478ea9c71a4859b6211509144a7e75f4634fbcc463ae0"
+  },
+  {
+    "archivo": "verificacion-instancia-real.json",
+    "carpeta": "06-Registro-Versiones-Entregables",
+    "responsable": "gonzalo",
+    "sha256": "7570e69412e4686a2a03b6842dc7efc3ffc44a6d1da0f9851f197be79529a574"
+  },
+  {
+    "archivo": "REVISION-SEGURIDAD.json",
+    "carpeta": "06-Registro-Versiones-Entregables",
+    "responsable": "gonzalo",
+    "sha256": "73d5829923800bcc19695568faa093eaf76d4ddde025c4db672e528f58075aa9"
+  },
+  {
+    "archivo": "EVIDENCIA-TRELLO.png",
+    "carpeta": "01-Arquitectura-y-Gestion-Agil",
+    "responsable": "gonzalo",
+    "sha256": "4cfe80330abfec9c4c349c880cd4e1699ea2ea29ec98c72c87149905c77cd454"
+  },
+  {
+    "archivo": "CIERRE-PUNTO12.md",
+    "carpeta": "06-Registro-Versiones-Entregables",
+    "responsable": "gonzalo",
+    "sha256": "2121867f33b58c7caa36107137137b901efbc732d255a016c5a460018d4f5a3b"
+  },
+  {
+    "archivo": "INFORME-ACTUALIZACION.md",
+    "carpeta": "06-Registro-Versiones-Entregables",
+    "responsable": "gonzalo",
+    "sha256": "2bdc3ee8528fb861770ac94c79933a557072bc2d87b6856f37ce4abd97bd6221"
+  },
+  {
+    "archivo": "GUIA-REPOSITORIO.md",
+    "carpeta": "06-Registro-Versiones-Entregables",
+    "responsable": "gonzalo",
+    "sha256": "630411ea4bae65e8d9cc3f1d3cae5b96fc4f4366a643264245f1c18ce213c1f0"
+  }
+]

@@ -1,0 +1,256 @@
+{
+  "name": "WF3 – Informe de Rendimiento Asistido por IA",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-03",
+      "name": "Schedule – Lunes 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Recolectar métricas de Prometheus (instant query)\nconst fs = require('fs');\nconst { execSync } = require('child_process');\nconst BASE = 'http://host.docker.internal:9090/api/v1/query';\n\nfunction readEnv(key) {\n  try {\n    const raw = fs.readFileSync('/proc/1/environ', 'latin1');\n    const m = raw.split('\\0').find(l => l.startsWith(key + '='));\n    return m ? m.slice(key.length + 1) : null;\n  } catch (e) { return null; }\n}\nconst nextcloudUrl = readEnv('NEXTCLOUD_URL');\nconst nextcloudConfigured = !!nextcloudUrl;\n\nfunction prom(q) {\n  const url = BASE + '?query=' + encodeURIComponent(q);\n  const out = execSync('wget -qO- \"' + url + '\"', { encoding: 'utf8', shell: '/bin/sh', maxBuffer: 10 * 1024 * 1024 });\n  try {\n    const j = JSON.parse(out);\n    if (j.status !== 'success') return { value: null, error: j.error || 'query failed' };\n    const r = (j.data && j.data.result && j.data.result[0]) ? j.data.result[0] : null;\n    return { value: r && r.value ? parseFloat(r.value[1]) : null };\n  } catch (e) { return { value: null, error: String(e.message || e) }; }\n}\n\nconst m = {\n  backend_up: prom('probe_success{job=\"blackbox_backend\"}').value,\n  backend_probe_duration_seconds: prom('probe_duration_seconds{job=\"blackbox_backend\"}').value,\n  backend_restart_count: prom('docker_container_restart_count{name=\"gymbro-backend\"}').value,\n  node_memory_MemAvailable_bytes: prom('node_memory_MemAvailable_bytes').value,\n  node_memory_MemTotal_bytes: prom('node_memory_MemTotal_bytes').value\n};\n\nconst ts = new Date().toISOString();\nconst stamp = ts.replace(/[:.]/g, '-').slice(0, 19);\nconst filename = 'informe-' + stamp + '.md';\nconst filepath = '/data/informes/' + filename;\n\nconst upStr = m.backend_up === null ? 'sin datos' : (m.backend_up === 1 ? 'UP' : 'DOWN');\nconst memFreeMB = m.node_memory_MemAvailable_bytes !== null ? Math.round(m.node_memory_MemAvailable_bytes / 1024 / 1024) : null;\nconst memTotalMB = m.node_memory_MemTotal_bytes !== null ? Math.round(m.node_memory_MemTotal_bytes / 1024 / 1024) : null;\n\nreturn [{ json: {\n  metrics: m,\n  backendUpStr: upStr,\n  memFreeMB,\n  memTotalMB,\n  startedAt: ts,\n  filename,\n  filepath,\n  nextcloudConfigured,\n  nextcloudUrl\n} }];"
+      },
+      "id": "code-recolectar-03",
+      "name": "Recolectar Métricas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Llamar al analizador Python via POST (servicio informe-analyzer:8090)\nconst fs = require('fs');\nconst { execSync } = require('child_process');\nconst prev = $input.item.json;\n\nconst tmpPath = '/tmp/informe-payload.json';\nfs.writeFileSync(tmpPath, JSON.stringify({ metrics: prev.metrics }));\n\nlet analysis = { anomalies: [], riskLevel: 'UNKNOWN', summary: 'Analizador no respondió' };\ntry {\n  const out = execSync('wget -qO- --header=\"Content-Type: application/json\" --post-file=\"' + tmpPath + '\" http://informe-analyzer:8090/analyze',\n    { encoding: 'utf8', shell: '/bin/sh', maxBuffer: 1024 * 1024 });\n  analysis = JSON.parse(out);\n} catch (e) {\n  analysis = { anomalies: [], riskLevel: 'UNKNOWN', summary: 'Error analizador: ' + String(e.message || e) };\n}\n\nreturn [{ json: Object.assign({}, prev, { analysis }) }];"
+      },
+      "id": "code-analizador-03",
+      "name": "Analizar con IA Python",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Renderizar el informe en Markdown y guardarlo en /data/informes\nconst fs = require('fs');\nconst p = $input.item.json;\nconst a = p.analysis || {};\nconst anomalies = (a.anomalies || []).map(x => ' - **' + x.metric + '** = ' + x.value + ' — ' + x.detail).join('\\n') || '_No se detectaron anomalías._';\n\nconst md = [\n  '# Informe de Rendimiento – Gymbro AI',\n  '',\n  '**Generado:** ' + p.startedAt,\n  '**Riesgo:** **' + (a.riskLevel || 'UNKNOWN') + '**',\n  '',\n  '## Resumen',\n  a.summary || 'Sin resumen disponible.',\n  '',\n  '## Anomalías detectadas',\n  anomalies,\n  '',\n  '## Métricas observadas',\n  '| Métrica | Valor |',\n  '|---|---|',\n  '| backend_up | ' + p.backendUpStr + ' |',\n  '| backend_probe_duration_seconds | ' + (p.metrics.backend_probe_duration_seconds !== null ? p.metrics.backend_probe_duration_seconds + ' s' : 'sin datos') + ' |',\n  '| backend_restart_count | ' + (p.metrics.backend_restart_count !== null ? p.metrics.backend_restart_count : 'sin datos') + ' |',\n  '| node_memory_MemAvailable_bytes | ' + (p.memFreeMB !== null ? p.memFreeMB + ' MB libres / ' + p.memTotalMB + ' MB total' : 'sin datos') + ' |',\n  '',\n  '## Notas',\n  '- Análisis automático generado por `informe-analyzer` (Python, heurística).',\n  '- Este informe se guarda localmente en `/data/informes/` y, si está configurado, se sube a Nextcloud.',\n  ''\n].join('\\n');\n\ntry { fs.writeFileSync(p.filepath, md, 'utf8'); } catch (e) { return [{ json: Object.assign({}, p, { writeError: String(e.message || e), informeContenido: md }) }]; }\n\nreturn [{ json: Object.assign({}, p, { informeContenido: md, informeGenerado: true }) }];"
+      },
+      "id": "code-guardar-informe-03",
+      "name": "Guardar Informe Local (.md)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-configured",
+              "leftValue": "={{ $json.nextcloudConfigured }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-nextcloud-03",
+      "name": "¿Nextcloud Configurado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Subir informe a Nextcloud (WebDAV PUT con Basic Auth)\nconst fs = require('fs');\nconst http = require('http');\nconst p = $input.item.json;\n\nfunction readEnv(key) {\n  try {\n    const raw = fs.readFileSync('/proc/1/environ', 'latin1');\n    const m = raw.split('\\0').find(l => l.startsWith(key + '='));\n    return m ? m.slice(key.length + 1) : null;\n  } catch (e) { return null; }\n}\n\nconst ncUrl  = readEnv('NEXTCLOUD_URL');\nconst ncUser = readEnv('NEXTCLOUD_USER');\nconst ncPass = readEnv('NEXTCLOUD_PASSWORD');\nif (!ncUrl || !ncUser || !ncPass) {\n  return [{ json: { ...p, nextcloudUploaded: false, nextcloudError: 'NEXTCLOUD_* no configurado en .env' } }];\n}\nif (!fs.existsSync(p.filepath)) {\n  return [{ json: { ...p, nextcloudUploaded: false, nextcloudError: 'Informe local no existe: ' + p.filepath } }];\n}\n\nconst target = ncUrl.replace(/\\/$/, '') + '/SmartGymBro-TP-Final/05-Monitoreo-y-Automatizacion/' + p.filename;\nconst body   = fs.readFileSync(p.filepath, 'utf8');\nconst auth   = Buffer.from(ncUser + ':' + ncPass).toString('base64');\nconst m      = /^(https?):\\/\\/([^\\/:]+)(?::([0-9]+))?(.*)$/.exec(target);\nif (!m) {\n  return [{ json: { ...p, nextcloudUploaded: false, nextcloudError: 'target malformado: ' + target } }];\n}\nconst hostname = m[2];\nconst port     = parseInt(m[3] || '80', 10);\nconst path     = (m[4] || '/') + (m[4] && m[4].includes('?') ? '' : '');\n\nreturn new Promise((resolve) => {\n  const req = http.request({\n    method: 'PUT',\n    hostname: hostname,\n    port: port,\n    path: path,\n    headers: {\n      'Authorization': 'Basic ' + auth,\n      'Content-Type': 'text/markdown',\n      'Content-Length': Buffer.byteLength(body)\n    }\n  }, (res) => {\n    let buf = '';\n    res.on('data', c => buf += c);\n    res.on('end', () => {\n      const ok = res.statusCode >= 200 && res.statusCode < 300;\n      resolve([{ json: { ...p, nextcloudUploaded: ok, nextcloudStatus: res.statusCode, nextcloudTarget: target, nextcloudOutput: buf.trim() } }]);\n    });\n  });\n  req.on('error', (e) => resolve([{ json: { ...p, nextcloudUploaded: false, nextcloudError: String(e.message || e), nextcloudTarget: target } }]));\n  req.setTimeout(20000, () => { req.destroy(); resolve([{ json: { ...p, nextcloudUploaded: false, nextcloudError: 'timeout', nextcloudTarget: target } }]); });\n  req.write(body);\n  req.end();\n});"
+      },
+      "id": "http-nextcloud-03",
+      "name": "Subir a Nextcloud (WebDAV)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "gsoniaemiliana@gmail.com",
+        "toEmail": "gsoniaemiliana@gmail.com",
+        "subject": "=[GYMBRO] Informe semanal – {{ $json.filename }}",
+        "text": "={{ 'Informe de rendimiento generado.\\n\\nRiesgo: ' + ($('Guardar Informe Local (.md)').all()[0].json.analysis && $('Guardar Informe Local (.md)').all()[0].json.analysis.riskLevel) + '\\nResumen: ' + ($('Guardar Informe Local (.md)').all()[0].json.analysis && $('Guardar Informe Local (.md)').all()[0].json.analysis.summary) + '\\n\\nDisponible en: ' + $('Guardar Informe Local (.md)').all()[0].json.filepath }}",
+        "options": {}
+      },
+      "id": "email-report-03",
+      "name": "Notificar por Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        460
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "smtp": {
+          "id": "GymbroSeedSmtpAcc01",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Registrar el resultado en el log de informes (leer desde nodo Guardar, no desde Email SMTP)\nconst fs = require('fs');\nconst p = $('Guardar Informe Local (.md)').all()[0].json;\nconst line = '[' + new Date().toISOString() + '] INFORME: ' + p.filename + ' | riesgo=' + (p.analysis && p.analysis.riskLevel) + ' | anomalias=' + ((p.analysis && p.analysis.anomalies) || []).length + ' | filepath=' + p.filepath + '\\n';\ntry { fs.appendFileSync('/data/informes/informes-log.txt', line, 'utf8'); return [{ json: Object.assign({}, p, { logWritten: true }) }]; }\ncatch (e) { return [{ json: Object.assign({}, p, { logError: String(e.message || e) }) }]; }"
+      },
+      "id": "code-log-informe-03",
+      "name": "Registrar en Log de Informes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule – Lunes 08:00": {
+      "main": [
+        [
+          {
+            "node": "Recolectar Métricas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recolectar Métricas": {
+      "main": [
+        [
+          {
+            "node": "Analizar con IA Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar con IA Python": {
+      "main": [
+        [
+          {
+            "node": "Guardar Informe Local (.md)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Informe Local (.md)": {
+      "main": [
+        [
+          {
+            "node": "¿Nextcloud Configurado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Nextcloud Configurado?": {
+      "main": [
+        [
+          {
+            "node": "Subir a Nextcloud (WebDAV)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notificar por Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a Nextcloud (WebDAV)": {
+      "main": [
+        [
+          {
+            "node": "Notificar por Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar por Email": {
+      "main": [
+        [
+          {
+            "node": "Registrar en Log de Informes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "",
+    "timezone": "America/Argentina/Buenos_Aires"
+  }
+}

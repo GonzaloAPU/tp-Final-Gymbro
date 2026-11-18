@@ -1,0 +1,30 @@
+-- Ejecutar como postgres sobre la instalación existente. No borra datos.
+BEGIN;
+SET LOCAL search_path TO gymbro, public;
+SELECT pg_advisory_xact_lock(20261022);
+ALTER TABLE "gymbro"."users" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."exercises" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."routines" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."routine_days" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."routine_exercises" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."training_sessions" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."performed_exercises" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."performed_sets" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."body_weight_histories" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+ALTER TABLE "gymbro"."strength_records" ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+CREATE INDEX IF NOT EXISTS users_deleted_at_idx ON "gymbro"."users" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS exercises_deleted_at_idx ON "gymbro"."exercises" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS routines_deleted_at_idx ON "gymbro"."routines" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS routine_days_deleted_at_idx ON "gymbro"."routine_days" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS routine_exercises_deleted_at_idx ON "gymbro"."routine_exercises" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS training_sessions_deleted_at_idx ON "gymbro"."training_sessions" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS performed_exercises_deleted_at_idx ON "gymbro"."performed_exercises" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS performed_sets_deleted_at_idx ON "gymbro"."performed_sets" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS body_weight_histories_deleted_at_idx ON "gymbro"."body_weight_histories" (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS strength_records_deleted_at_idx ON "gymbro"."strength_records" (deleted_at) WHERE deleted_at IS NOT NULL;
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='gymbro_backend') THEN
+REVOKE DELETE ON "gymbro"."users","gymbro"."exercises","gymbro"."routines","gymbro"."routine_days","gymbro"."routine_exercises","gymbro"."training_sessions","gymbro"."performed_exercises","gymbro"."performed_sets","gymbro"."body_weight_histories","gymbro"."strength_records" FROM gymbro_backend;
+END IF; END $$;
+INSERT INTO "gymbro".schema_migrations(version) VALUES ('20261022_soft_delete') ON CONFLICT(version) DO NOTHING;
+COMMIT;
+SELECT version FROM gymbro.schema_migrations WHERE version='20261022_soft_delete';

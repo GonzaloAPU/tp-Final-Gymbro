@@ -1,0 +1,10 @@
+{
+  "fecha": "2026-11-03",
+  "repositorio_origen": "gymbro",
+  "commit_origen": "8a4b7ed9f03f2a73e959ab79f68b81340d235442",
+  "incluye_cambios_locales_sin_commit": false,
+  "archivos_copiados": 201,
+  "nota": "Copia de código y catálogo oficial, sin historial Git, .env, node_modules, APK, SDK, volúmenes ni registros de usuarios.",
+  "fecha_actualizacion": "2026-11-03",
+  "commit_actualizacion": "6158535b58433cfb02ec41382cd3e8f4f4e7c00e"
+}

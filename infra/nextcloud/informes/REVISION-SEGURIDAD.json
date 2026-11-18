@@ -1,0 +1,25 @@
+{
+  "paginas_revisadas": 56,
+  "revision": "Texto y vista de páginas; no se observaron otras credenciales evidentes",
+  "redacciones": [
+    {
+      "archivo": "Informe_Tecnico_Punto4.pdf",
+      "lineas_redactadas": 2,
+      "paginas": [
+        3
+      ],
+      "sha256_original": "ed5e938b7213711c83ddc587ba88b6f6146f1710bb486a0792de68e0530e9102",
+      "sha256_publicable": "faa811d050d0ad00faa39237de3a07406089bfff7d33fa4224c8d811a3516b82"
+    },
+    {
+      "archivo": "Informe-Monitoreo-Prometheus-Grafana- ej10.pdf",
+      "lineas_redactadas": 2,
+      "paginas": [
+        2,
+        6
+      ],
+      "sha256_original": "97f637d047e104bfc3d73382883b8f76939819836cd645e494a981be51e602ea",
+      "sha256_publicable": "37e17a5220d7c521f8f4f661300a06e6b8e2b30c42a36d7ad82147d8e5d9e109"
+    }
+  ]
+}

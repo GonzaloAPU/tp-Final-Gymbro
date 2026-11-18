@@ -1,0 +1,242 @@
+{
+  "name": "WF1 – Alertas de Infraestructura",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger-01",
+      "name": "Schedule – Cada 30s",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:9090/api/v1/rules",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-prometheus-01",
+      "name": "Prometheus – Consultar Firing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const groups = ($input.all()[0]?.json?.data?.groups) || [];\nconst firing = [];\nfor (const g of groups) {\n  for (const r of (g.rules || [])) {\n    if (r.type !== 'alerting') continue;\n    if (r.state !== 'firing') continue;\n    const labels = r.labels || {};\n    const annotations = r.annotations || {};\n    const alertsArr = r.alerts || [];\n    if (alertsArr.length === 0) {\n      firing.push({\n        alertname: r.name || labels.alertname || 'Unknown',\n        severity: labels.severity || 'warning',\n        instance: labels.instance || 'unknown',\n        job: labels.job || 'unknown',\n        summary: annotations.summary || '',\n        description: annotations.description || '',\n        startsAt: new Date().toISOString(),\n        fingerprint: ((r.name || 'alert') + '-' + (labels.instance || 'unknown')).replace(/[^a-z0-9-]/gi, '-')\n      });\n    } else {\n      for (const a of alertsArr) {\n        const al = a.labels || {};\n        firing.push({\n          alertname: al.alertname || r.name || 'Unknown',\n          severity: al.severity || 'warning',\n          instance: al.instance || 'unknown',\n          job: al.job || 'unknown',\n          summary: annotations.summary || '',\n          description: annotations.description || '',\n          startsAt: a.activeAt || new Date().toISOString(),\n          fingerprint: ((al.alertname || r.name || 'alert') + '-' + (al.instance || 'unknown')).replace(/[^a-z0-9-]/gi, '-')\n        });\n      }\n    }\n  }\n}\nreturn firing.map(a => ({ json: a }));\n"
+      },
+      "id": "code-extract-01",
+      "name": "Extraer Alertas Firing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://host.docker.internal:8089/api/rest/issues/?page_size=50&sort=id&direction=DESC",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-get-issues-01",
+      "name": "MantisBT – Buscar Issues Existentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GymbroSeedMantis01",
+          "name": "MantisBT API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const alert = $('Extraer Alertas Firing').item.json;\nconst fp = alert.fingerprint;\nconst severity = alert.severity;\nconst alertname = alert.alertname;\nconst instance = alert.instance;\nconst job = alert.job;\nlet existingIssues = [];\ntry { const issuesNode = $('MantisBT – Buscar Issues Existentes').item.json;\n  existingIssues = (issuesNode && issuesNode.issues) || []; } catch(e) { existingIssues = []; }\n\nconst isDuplicate = existingIssues.some(issue => {\n  const s = (issue.summary || '');\n  const isOpen = issue.status?.name !== 'closed' && issue.status?.name !== 'resolved';\n  return isOpen && s.includes(fp);\n});\n\nconst sumTxt = ('[ALERTA][' + String(severity).toUpperCase() + '] ' + alertname + ' - ' + instance + ' [' + fp + ']').slice(0, 255);\nconst desc = '## Alerta Prometheus\\n\\n'\n  + '**Nombre:** ' + alertname + '\\n'\n  + '**Severidad:** ' + severity + '\\n'\n  + '**Instancia:** ' + instance + '\\n'\n  + '**Job:** ' + String(job || '') + '\\n\\n'\n  + '### Resumen\\n' + String(alert.summary || '') + '\\n\\n'\n  + '### Descripcion\\n' + String(alert.description || '') + '\\n\\n'\n  + '### Inicio\\n' + String(alert.startsAt || '') + '\\n\\n'\n  + '*automatizado por n8n - WF Alertas desde Prometheus*';\n\nreturn {\n  json: Object.assign({}, $input.item.json, {\n    isDuplicate,\n    summary: sumTxt,\n    description: desc,\n    fingerprint: fp,\n    severity,\n    alertname,\n    instance,\n    job\n  })\n};\n"
+      },
+      "id": "code-dedup-01",
+      "name": "Verificar Duplicado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-dup",
+              "leftValue": "={{ $json.isDuplicate }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-dup-01",
+      "name": "¿Es Duplicado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8089/api/rest/issues/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "summary", "value": "={{ $json.summary }}" },
+            { "name": "description", "value": "={{ $json.description }}" },
+            { "name": "project", "value": "={{ { id: 1 } }}" },
+            { "name": "category", "value": "={{ { name: 'General' } }}" },
+            { "name": "severity", "value": "={{ { name: ($json.severity === 'critical' ? 'critical' : ($json.severity === 'warning' ? 'major' : 'minor')) } }}" },
+            { "name": "priority", "value": "={{ { name: ($json.severity === 'critical' ? 'urgent' : 'normal') } }}" },
+            { "name": "status", "value": "={{ { name: 'new' } }}" }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-create-issue-01",
+      "name": "MantisBT – Crear Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GymbroSeedMantis01",
+          "name": "MantisBT API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const issue = $input.item.json;\nconst issueId = issue.issue?.id || issue.id || 'desconocido';\nconst summary = issue.issue?.summary || issue.summary || 'sin resumen';\nconsole.log('[WF1] Issue creado en MantisBT: ID=' + issueId + ' | ' + summary);\nreturn { json: { resultado: 'issue_creado', issueId, summary, timestamp: new Date().toISOString() } };\n"
+      },
+      "id": "code-log-ok-01",
+      "name": "Registrar Éxito",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1640, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "console.log('[WF1] Alerta duplicada ignorada: ' + $input.item.json.fingerprint);\nreturn { json: { resultado: 'duplicado_ignorado', fingerprint: $input.item.json.fingerprint, alertname: $input.item.json.alertname, timestamp: new Date().toISOString() } };\n"
+      },
+      "id": "code-dup-log-01",
+      "name": "Registrar Duplicado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 440]
+    }
+  ],
+  "connections": {
+    "Schedule – Cada 30s": {
+      "main": [
+        [{ "node": "Prometheus – Consultar Firing", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prometheus – Consultar Firing": {
+      "main": [
+        [{ "node": "Extraer Alertas Firing", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer Alertas Firing": {
+      "main": [
+        [{ "node": "MantisBT – Buscar Issues Existentes", "type": "main", "index": 0 }]
+      ]
+    },
+    "MantisBT – Buscar Issues Existentes": {
+      "main": [
+        [{ "node": "Verificar Duplicado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verificar Duplicado": {
+      "main": [
+        [{ "node": "¿Es Duplicado?", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Es Duplicado?": {
+      "main": [
+        [{ "node": "MantisBT – Crear Issue", "type": "main", "index": 0 }],
+        [{ "node": "Registrar Duplicado", "type": "main", "index": 0 }]
+      ]
+    },
+    "MantisBT – Crear Issue": {
+      "main": [
+        [{ "node": "Registrar Éxito", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/Argentina/Buenos_Aires"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "versionId": "gymbro-wf1-polling-v1",
+  "tags": [
+    { "id": "tag-gymbro", "name": "gymbro" },
+    { "id": "tag-infraestructura", "name": "infraestructura" }
+  ]
+}

@@ -1,0 +1,130 @@
+name: CI/CD Pipeline - SmartGymBro
+
+on:
+  push:
+    branches: [ develop, main, 'feature/**' ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ develop, main ]
+
+permissions:
+  contents: read
+
+jobs:
+  # =============================================================
+  # FASE 1: CI (Inspección continua: lint, tipos, tests y build)
+  # =============================================================
+  test-and-validate:
+    name: Pruebas y Validación (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 26 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: 'npm'
+
+      - name: Instalar dependencias limpias (npm ci)
+        run: npm ci
+
+      - name: Verificación de tipos TypeScript (Typecheck)
+        run: npm run typecheck
+
+      - name: Ejecutar pruebas automatizadas (Tests)
+        run: npm run test
+
+      - name: Validar compilación de la aplicación (Build)
+        run: npm run build
+
+  # =============================================================
+  # FASE 2: CD (Construcción y publicación de imágenes Docker)
+  # Solo corre si los tests pasaron Y si es un push a develop/main o tag
+  # =============================================================
+  build-and-publish:
+    name: Construir y Publicar Contenedores (CD)
+    needs: test-and-validate
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 1. Autenticación en GHCR (GitHub Packages)
+      - name: Iniciar sesión en GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Autenticación en Docker Hub (Cuenta de Aldo Dante)
+      - name: Iniciar sesión en Docker Hub
+        if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      # 3. Preparar etiquetas dinámicas para Backend
+      - name: Definir etiquetas de Backend
+        id: meta-backend
+        run: |
+          TAGS="ghcr.io/gonzaloapu/tp-final-gymbro-backend:latest,ghcr.io/gonzaloapu/tp-final-gymbro-backend:${{ github.sha }}"
+          if [ -n "$DOCKER_USERNAME" ]; then
+            TAGS="$TAGS,aldodante/smartgymbro-backend:latest,aldodante/smartgymbro-backend:${{ github.sha }}"
+          fi
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAGS="$TAGS,ghcr.io/gonzaloapu/tp-final-gymbro-backend:${{ github.ref_name }}"
+            if [ -n "$DOCKER_USERNAME" ]; then
+              TAGS="$TAGS,aldodante/smartgymbro-backend:${{ github.ref_name }}"
+            fi
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      # 4. Construir y Publicar Backend (Node.js 26)
+      - name: Publicar Imagen Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+
+      # 5. Preparar etiquetas dinámicas para Frontend
+      - name: Definir etiquetas de Frontend
+        id: meta-frontend
+        run: |
+          TAGS="ghcr.io/gonzaloapu/tp-final-gymbro-frontend:latest,ghcr.io/gonzaloapu/tp-final-gymbro-frontend:${{ github.sha }}"
+          if [ -n "$DOCKER_USERNAME" ]; then
+            TAGS="$TAGS,aldodante/smartgymbro-frontend:latest,aldodante/smartgymbro-frontend:${{ github.sha }}"
+          fi
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAGS="$TAGS,ghcr.io/gonzaloapu/tp-final-gymbro-frontend:${{ github.ref_name }}"
+            if [ -n "$DOCKER_USERNAME" ]; then
+              TAGS="$TAGS,aldodante/smartgymbro-frontend:${{ github.ref_name }}"
+            fi
+          fi
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      # 6. Construir y Publicar Frontend (Angular 22 + Nginx)
+      - name: Publicar Imagen Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
