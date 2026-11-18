@@ -325,6 +325,23 @@ services:
     networks:
       - gymbro-net
 
+  # 11. Agente de Despliegue Continuo Automatico (Punto 8 CI/CD)
+  # Monitorea los registros de imagenes en la nube cada 60s y actualiza la app en caliente
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: gymbro-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.44
+      - WATCHTOWER_POLL_INTERVAL=60
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    command: gymbro-frontend gymbro-backend
+    networks:
+      - gymbro-net
+
 volumes:
   etcd1_data:
   etcd2_data:

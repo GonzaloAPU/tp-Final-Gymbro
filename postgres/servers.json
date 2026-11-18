@@ -1,7 +1,7 @@
 {
   "Servers": {
     "1": {
-      "Name": "SmartGymBro HAProxy - Escritura (Master/Lider)",
+      "Name": "SmartGymBro HAProxy - Escritura (Master)",
       "Group": "SmartGymBro Cluster",
       "Host": "haproxy",
       "Port": 5000,
@@ -10,7 +10,7 @@
       "SSLMode": "prefer"
     },
     "2": {
-      "Name": "SmartGymBro HAProxy - Lectura (Replicas Balanceadas)",
+      "Name": "SmartGymBro HAProxy - Lectura (Replicas)",
       "Group": "SmartGymBro Cluster",
       "Host": "haproxy",
       "Port": 5001,
