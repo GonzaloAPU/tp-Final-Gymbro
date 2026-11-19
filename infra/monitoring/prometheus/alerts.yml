@@ -3,7 +3,7 @@ groups:
     rules:
       - alert: BackendDown
         expr: probe_success{job="blackbox_backend"} == 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -21,7 +21,7 @@ groups:
 
       - alert: PostgresDown
         expr: pg_up == 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
@@ -52,7 +52,7 @@ groups:
       # contenedores ajenos/detenidos de otros trabajos.
       - alert: ContainerDown
         expr: docker_container_running{name=~"gymbro-.*", name!="gymbro-cadvisor-layerdb-init"} == 0
-        for: 2m
+        for: 1m
         labels:
           severity: critical
         annotations:
