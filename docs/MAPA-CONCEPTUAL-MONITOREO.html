@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mapa Conceptual de Monitoreo - Prometheus y Grafana (Punto 10)</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      themeVariables: {
+        background: '#ffffff',
+        primaryColor: '#f9fafb',
+        primaryBorderColor: '#111827',
+        primaryTextColor: '#111827',
+        lineColor: '#111827',
+        textColor: '#111827',
+        mainBkg: '#ffffff',
+        nodeBorder: '#111827'
+      }
+    });
+  </script>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.5cm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #000000;
+      background-color: #ffffff;
+      line-height: 1.5;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 24px;
+      border-bottom: 2px solid #000000;
+      padding-bottom: 8px;
+      margin-top: 0;
+      color: #000000;
+    }
+    h2 {
+      font-size: 18px;
+      border-bottom: 1px solid #333333;
+      padding-bottom: 4px;
+      margin-top: 24px;
+      color: #000000;
+    }
+    h3 {
+      font-size: 15px;
+      margin-top: 16px;
+      color: #000000;
+    }
+    p, li {
+      font-size: 13px;
+      color: #111111;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #333333;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f3f4f6;
+      font-weight: bold;
+      color: #000000;
+    }
+    .mermaid {
+      background-color: #ffffff !important;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 16px 0;
+      text-align: center;
+    }
+    .nota {
+      border-left: 4px solid #000000;
+      padding: 8px 12px;
+      background-color: #f9fafb;
+      margin: 12px 0;
+      font-size: 12px;
+    }
+    .btn-print {
+      background-color: #111827;
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    @media print {
+      .btn-print {
+        display: none;
+      }
+      body {
+        padding: 0;
+        max-width: 100%;
+      }
+      .mermaid {
+        border: none;
+        padding: 0;
+      }
+      h2 {
+        page-break-before: auto;
+      }
+      table, .mermaid {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar como PDF (Ctrl + P)</button>
+
+  <h1>Guía y Mapa Conceptual: Monitoreo con Prometheus y Grafana (Punto 10)</h1>
+  <p><strong>Proyecto:</strong> SmartGymBro · <strong>Módulo:</strong> <code>infra/monitoring</code> · <strong>Responsable:</strong> Sonia (Monitoreo e Infraestructura)</p>
+
+  <h2>1. Arquitectura General del Sistema de Monitoreo</h2>
+  <p>El sistema opera bajo un <strong>modelo Pull</strong>. Prometheus visita cada 15 segundos a los 5 exportadores para consultar sus métricas, las guarda en su base de datos temporal (TSDB) y las expone hacia Grafana para visualización y hacia n8n para generar alertas en MantisBT.</p>
+
+  <div class="mermaid">
+    flowchart TD
+      subgraph ORIGEN ["1. Capa de Infraestructura y Servicios"]
+        VM["Host / VM Linux (Docker Desktop)"]
+        DOCKER["Motor Docker (Sockets y cgroups)"]
+        BACKEND["Backend API (gymbro-backend :3100)"]
+        CLUSTER["Clúster BD (HAProxy :55433 / Patroni / PostgreSQL)"]
+      end
+
+      subgraph EXPORTERS ["2. Capa de Exportadores (Traductores de Métricas)"]
+        NODE["Node Exporter (:9100)<br/>CPU, RAM, Disco, Red del Host"]
+        CADVISOR["cAdvisor (:8080)<br/>CPU y RAM por Contenedor"]
+        DOCKER_EXP["Docker Exporter Propio (:9189)<br/>Estado RUNNING/STOPPED y Reinicios"]
+        BLACKBOX["Blackbox Exporter (:9115)<br/>Probe HTTP a /api/health"]
+        PG_EXP["Postgres Exporter (:9187)<br/>Conexiones y pg_up"]
+      end
+
+      subgraph PROMETHEUS ["3. Capa Central (Prometheus :9090)"]
+        SCRAPE["Motor de Scraping (HTTP GET cada 15s)"]
+        TSDB[("Base de Datos Temporal TSDB<br/>Retención 15 días")]
+        RULES["Evaluador de Reglas de Alerta (PromQL)"]
+      end
+
+      subgraph ACCION ["4. Visualización y Respuesta"]
+        GRAFANA["Grafana (:3001)<br/>12 Paneles Interactivos"]
+        N8N["n8n Workflow WF1 (:5678)<br/>Polling y Enrutamiento por Especialista"]
+        MANTIS["MantisBT (:8089)<br/>Tickets asignados con severidad crash"]
+      end
+
+      VM --> NODE
+      DOCKER --> CADVISOR
+      DOCKER --> DOCKER_EXP
+      BACKEND --> BLACKBOX
+      CLUSTER --> PG_EXP
+
+      NODE --> SCRAPE
+      CADVISOR --> SCRAPE
+      DOCKER_EXP --> SCRAPE
+      BLACKBOX --> SCRAPE
+      PG_EXP --> SCRAPE
+
+      SCRAPE --> TSDB
+      SCRAPE --> RULES
+
+      TSDB --> GRAFANA
+      RULES --> N8N
+      N8N --> MANTIS
+  </div>
+
+  <h2>2. Cuadro Comparativo de Exportadores</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Exportador</th>
+        <th>Puerto</th>
+        <th>¿Qué mide exactamente?</th>
+        <th>Justificación Técnica para la Defensa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>node-exporter</strong></td>
+        <td><code>9100</code></td>
+        <td>CPU, memoria RAM disponible, uso de disco y tráfico de red de la máquina virtual/host.</td>
+        <td>Provee las métricas globales del sistema operativo que exige la consigna.</td>
+      </tr>
+      <tr>
+        <td><strong>cAdvisor</strong></td>
+        <td><code>8080</code></td>
+        <td>Consumo de CPU y memoria desglosado <em>por cada contenedor Docker individual</em>.</td>
+        <td>Permite aislar qué microservicio específico está saturando el equipo.</td>
+      </tr>
+      <tr>
+        <td><strong>docker-stats-exporter</strong><br/><em>(Script propio Python)</em></td>
+        <td><code>9189</code></td>
+        <td>Estado de cada contenedor (1=RUNNING, 0=STOPPED) y contador real de reinicios (<code>RestartCount</code>).</td>
+        <td><strong>Punto clave:</strong> cAdvisor v0.49 no expone reinicios en Docker Desktop debido al <em>containerd image store</em>. Sonia programó este script para leer directamente el socket <code>/var/run/docker.sock</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>blackbox-exporter</strong></td>
+        <td><code>9115</code></td>
+        <td>Disponibilidad externa y latencia enviando peticiones HTTP GET periódicas a <code>/api/health</code>.</td>
+        <td>Mide la experiencia real del usuario: no monitorea el proceso por dentro, sino si la API responde código <code>HTTP 200</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>postgres-exporter</strong></td>
+        <td><code>9187</code></td>
+        <td>Salud de la base de datos (<code>pg_up == 1</code>) y cantidad de conexiones activas e inactivas.</td>
+        <td>Monitorea la saturación y disponibilidad de PostgreSQL a través del puerto de HAProxy.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Ciclo de Vida de una Alerta (De la Falla al Ticket en MantisBT)</h2>
+  <div class="mermaid">
+    sequenceDiagram
+      autonumber
+      actor Alumno as Alumno (Simula Falla)
+      participant Contenedor as Contenedor Docker (ej. db-node3)
+      participant Exporter as Docker Exporter (:9189)
+      participant Prom as Prometheus (:9090)
+      participant N8N as n8n WF1 (:5678)
+      participant Mantis as MantisBT (:8089)
+
+      Alumno->>Contenedor: docker stop gymbro-db-node3
+      Contenedor-->>Exporter: Estado cambia a detenido (Exit 0)
+      
+      Note over Prom,Exporter: Scrape cada 15 segundos
+      Prom->>Exporter: GET /metrics
+      Exporter-->>Prom: docker_container_running{name="gymbro-db-node3"} = 0
+
+      Note over Prom: Condición detectada: Pasa a estado PENDING.<br/>Espera tiempo de gracia de 1 minuto (for: 1m).<br/>Al cumplirse el minuto: Pasa a estado FIRING.
+
+      Note over N8N,Prom: Polling cada 30 segundos
+      N8N->>Prom: GET /api/v1/rules
+      Prom-->>N8N: Alerta activa: ContainerDown (gymbro-db-node3, critical)
+
+      Note over N8N: WF1 analiza y enruta:<br/>1. Nombre 'db-node3' -> Categoría Database y Asignado a Facundo (DBA)<br/>2. Severidad 'critical' -> Mapea a enum 'crash' en MantisBT<br/>3. Deduplica para no repetir tickets existentes.
+
+      N8N->>Mantis: POST /api/rest/issues/ (Category: Database, Handler: facundo_db, Severity: crash)
+      Mantis-->>N8N: HTTP 201 Created (Incidencia #19 asignada a Facundo)
+  </div>
+
+  <h2>4. Glosario Teórico para Defender ante el Profesor</h2>
+  <ul>
+    <li><strong>Modelo Pull vs. Push:</strong> En el modelo Push los servidores mandan datos a un colector central (si el colector cae, se saturan o pierden métricas). Prometheus usa <strong>Pull</strong>: él toma la iniciativa de consultar cada 15s. Si un contenedor muere, Prometheus se da cuenta inmediatamente porque el intento de conexión falla (<code>up == 0</code>).</li>
+    <li><strong>TSDB (Time Series Database):</strong> Base de datos optimizada exclusivamente para guardar números a lo largo del tiempo. Cada muestra almacena: <code>Métrica + Etiquetas (Labels) + Timestamp + Valor numérico</code>.</li>
+    <li><strong>Gauge vs. Counter:</strong>
+      <ul>
+        <li><em>Gauge:</em> Valor que sube y baja constantemente (ej. uso de memoria RAM, temperatura, conexiones activas, estado vivo/muerto 1/0).</li>
+        <li><em>Counter:</em> Valor acumulativo que únicamente se incrementa o vuelve a 0 si el servicio reinicia (ej. total de visitas recibidas, total de bytes transmitidos, contador de reinicios <code>RestartCount</code>).</li>
+      </ul>
+    </li>
+    <li><strong>Reglas de Alerta (Pending vs. Firing):</strong> El parámetro <code>for: 1m</code> evita falsas alarmas ante micro-cortes. La alerta entra primero en <code>Pending</code>; si la falla persiste durante el tiempo estipulado, se transforma en <code>Firing</code> y se activa la notificación.</li>
+    <li><strong>Provisioning (Infraestructura como Código):</strong> En lugar de crear datasources y dashboards haciendo clics en la interfaz web de Grafana, se configuran archivos YAML (<code>datasources/prometheus.yml</code>) y JSON (<code>dashboards/gymbro-overview.json</code>) que se cargan automáticamente al arrancar el contenedor.</li>
+  </ul>
+
+  <div class="nota">
+    <strong>💡 Cómo responder sobre la Replicación de Base de Datos:</strong><br/>
+    En el informe inicial de Sonia se probó con una instancia base para no generar dependencias. En la integración final con el clúster de Patroni, la replicación se monitorea en tiempo real mediante la consola de estadísticas de <strong>HAProxy</strong> (puerto <code>7000</code>), donde se verifica que el nodo Líder esté activo en <code>patroni_primary</code> y las réplicas estén activas por streaming en <code>patroni_replicas</code> con <code>Lag = 0</code>.
+  </div>
+
+</body>
+</html>

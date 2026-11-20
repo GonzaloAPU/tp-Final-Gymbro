@@ -30,9 +30,12 @@ def evaluate(metrics: dict):
     def add(metric, value, detail):
         anomalies.append({"metric": metric, "value": value, "detail": detail})
 
-    # 1) Backend no responde
-    if metrics.get("backend_up") is False:
+    # 1) Backend no responde o caído
+    val_backend = metrics.get("backend_up")
+    if val_backend == 0 or val_backend is False:
         add("backend_up", 0, "El backend no responde a la sonda HTTP (probe_success == 0)")
+    elif val_backend is None:
+        add("backend_up", None, "No se pudo leer el estado del backend desde Prometheus")
 
     # 2) Latencia del backend
     dur = metrics.get("backend_probe_duration_seconds")
@@ -43,9 +46,11 @@ def evaluate(metrics: dict):
             add("backend_probe_duration_seconds", dur, f"Latencia alta {dur:.2f}s")
 
     # 3) Restarts de contenedores
-    restarts = metrics.get("docker_container_restart_count_total")
+    restarts = metrics.get("backend_restart_count")
+    if restarts is None:
+        restarts = metrics.get("docker_container_restart_count_total")
     if restarts is not None and restarts > THRESHOLDS["restart_count_warn"]:
-        add("docker_container_restart_count_total", restarts, f"Se detectaron {restarts} reinicios de contenedor")
+        add("backend_restart_count", restarts, f"Se detectaron {restarts} reinicios de contenedor")
 
     # 4) Memoria disponible
     mem = metrics.get("node_memory_MemAvailable_bytes")
@@ -55,16 +60,14 @@ def evaluate(metrics: dict):
         elif mem < THRESHOLDS["memory_available_warn_bytes"]:
             add("node_memory_MemAvailable_bytes", mem, f"Memoria disponible baja: {mem // (1024*1024)} MB")
 
-    # 5) Reglas simples de ausencia/valor inesperado
-    if metrics.get("backend_up") is None:
-        add("backend_up", None, "No se pudo leer el estado del backend desde Prometheus")
-
     # Resultado global
     severity = "OK"
-    if any(a["metric"] == "backend_up" and a["value"] == 0 for a in anomalies):
+    if any(a["metric"] == "backend_up" for a in anomalies):
+        severity = "CRIT"
+    elif any("crit" in a["detail"].lower() for a in anomalies):
         severity = "CRIT"
     elif anomalies:
-        severity = "WARN" if not any("crit" in a["detail"].lower() for a in anomalies) else "CRIT"
+        severity = "WARN"
 
     parts = [a["detail"] for a in anomalies]
     if not parts:
