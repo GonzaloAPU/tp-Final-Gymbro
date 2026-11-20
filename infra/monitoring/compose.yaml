@@ -88,6 +88,8 @@ services:
       DATA_SOURCE_NAME: ${POSTGRES_DATA_SOURCE}
     ports:
       - "9187:9187"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - gymbro-monitoring
 
@@ -99,6 +101,8 @@ services:
       - ./blackbox.yml:/etc/blackbox.yml:ro
     ports:
       - "9115:9115"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - gymbro-monitoring
 
