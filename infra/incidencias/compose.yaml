@@ -26,6 +26,12 @@ services:
       MANTIS_DB_NAME: ${MANTIS_DB_NAME:-bugtracker}
     depends_on:
       - mantis-db
+    volumes:
+      - ./config_inc.php:/var/www/html/config/config_inc.php:ro
+      - ./overrides/access_api.php:/var/www/html/core/access_api.php:ro
+      - ./overrides/BugFilterQuery.class.php:/var/www/html/core/classes/BugFilterQuery.class.php:ro
+      - ./overrides/filter_api.php:/var/www/html/core/filter_api.php:ro
+      - ./plugins/SmartGymBroDashboard:/var/www/html/plugins/SmartGymBroDashboard:ro
     networks:
       - gymbro-net
     restart: always
