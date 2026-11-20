@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Apunte Técnico de Defensa: Facundo y Aldo - SmartGymBro</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 1.6cm 1.4cm 1.6cm 1.4cm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    @page landscape-section {
+      size: A4 landscape;
+      margin: 1.4cm 1.2cm 1.4cm 1.2cm;
+    }
+
+    .landscape-page {
+      page: landscape-section;
+      break-before: page;
+      page-break-before: always;
+      break-after: page;
+      page-break-after: always;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background-color: #ffffff;
+      line-height: 1.55;
+      font-size: 13.5px;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Encabezado */
+    .header {
+      border-bottom: 3px solid #1e3a8a;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #1e3a8a;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header .subtitle {
+      color: #475569;
+      font-size: 14px;
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .meta-bar {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .badge-accent {
+      background: #f0fdf4;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+
+    .badge-purple {
+      background: #faf5ff;
+      color: #7e22ce;
+      border-color: #e9d5ff;
+    }
+
+    /* Tipografía y secciones */
+    h2 {
+      color: #1e3a8a;
+      font-size: 18px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 26px;
+      margin-bottom: 14px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      color: #0f172a;
+      font-size: 15px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: #1e293b;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 12px;
+      padding-left: 22px;
+      color: #1e293b;
+    }
+
+    li {
+      margin-bottom: 5px;
+    }
+
+    /* Cajas informativas */
+    .info-box {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 5px solid #2563eb;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .info-box h4 {
+      margin: 0 0 6px 0;
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .success-box {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-left: 5px solid #16a34a;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .success-box h4 {
+      margin: 0 0 6px 0;
+      color: #15803d;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* Bloques de código (fondo claro para impresión) */
+    pre {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      color: #0f172a;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 12px 0;
+      page-break-inside: avoid;
+    }
+
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      background-color: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+
+    /* Tablas estándar */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12.5px;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+    }
+
+    td {
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      vertical-align: top;
+      color: #1e293b;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    /* Tablas apaisadas */
+    .landscape-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+
+    .landscape-table th {
+      background-color: #e2e8f0;
+      color: #0f172a;
+      font-size: 13.5px;
+      padding: 10px 12px;
+      border: 1.5px solid #94a3b8;
+    }
+
+    .landscape-table td {
+      padding: 10px 12px;
+      border: 1.5px solid #cbd5e1;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .diagram-box {
+      background-color: #ffffff;
+      border: 1.5px solid #2563eb;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      margin: 12px 0;
+      color: #1e3a8a;
+      page-break-inside: avoid;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO -->
+  <div class="header">
+    <h1>Apunte Técnico de Defensa: Facundo y Aldo</h1>
+    <div class="subtitle">Base de Datos, Alta Disponibilidad, DevOps, CI/CD y Publicación con Túnel Cifrado</div>
+    <div class="meta-bar">
+      <span class="badge">Proyecto: SmartGymBro</span>
+      <span class="badge">Cátedra: HIA 2026 (UNJu)</span>
+      <span class="badge-accent">Facundo: DBA & Alta Disponibilidad (Puntos 4, 5, 6)</span>
+      <span class="badge-purple">Aldo: DevOps, CI/CD & Túnel (Puntos 7, 8, 9)</span>
+    </div>
+  </div>
+
+  <!-- SECCIÓN CLOUDFLARE -->
+  <h2>1. Exposición Pública con Túnel Seguro: Cloudflare Tunnel</h2>
+
+  <h3>1.1. ¿Cómo Funciona y qué Problema Resuelve?</h3>
+  <p>
+    En una arquitectura tradicional, exponer una aplicación web que corre en un entorno local (<code>http://localhost:4300</code>) hacia Internet requiere configurar el router (abrir puertos con <em>Port Forwarding</em>), disponer de una dirección IP pública estática y abrir el firewall del sistema operativo, exponiendo la red doméstica a escaneos de puertos y ciberataques.
+  </p>
+  <p>
+    <strong>Cloudflare Tunnel (mediante el agente <code>cloudflared</code>) implementa un modelo de túnel reverso cifrado:</strong>
+  </p>
+  <ul>
+    <li><strong>Conexión Saliente:</strong> El cliente <code>cloudflared</code> inicia una conexión TCP/TLS saliente (puerto 443) hacia la red global de Cloudflare. Al ser tráfico saliente, no requiere abrir ningún puerto en el router ni en el firewall.</li>
+    <li><strong>Enlace Público Seguro con HTTPS:</strong> Cloudflare asigna automáticamente un subdominio temporal bajo <code>trycloudflare.com</code> (modo <em>Quick Tunnel</em>) dotado de certificado SSL/TLS válido.</li>
+    <li><strong>Aislamiento y Blindaje Perimetral:</strong> Únicamente se expone el puerto <strong>4300</strong> del servidor web Nginx (Frontend). La base de datos (PostgreSQL 5432) y la API interna (Node.js 3100) permanecen 100% aisladas en la red interna de Docker, inaccesibles desde el exterior.</li>
+  </ul>
+
+  <h3>1.2. ¿Está Dockerizado o es un Programa Instalado?</h3>
+  <div class="info-box">
+    <h4>La Clave de la Arquitectura: Aplicación Dockerizada vs Túnel Híbrido</h4>
+    <p>
+      La aplicación web <strong>SmartGymBro está 100% dockerizada</strong> (Frontend Nginx, Backend Express y Cluster de PostgreSQL). Para conectar esa red de contenedores con Internet mediante Cloudflare Tunnel, existen dos formas de ejecución técnicamente equivalentes:
+    </p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Modalidad</th>
+        <th style="width: 45%;">Comando de Ejecución</th>
+        <th style="width: 30%;">Características Operativas</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Versión Dockerizada<br/>(Recomendada Académica)</strong></td>
+        <td>
+          <code>docker run --rm -it cloudflare/cloudflared:latest tunnel --url http://host.docker.internal:4300</code>
+        </td>
+        <td>
+          • El túnel corre dentro de un contenedor Docker aislado.<br/>
+          • No requiere instalar nada en Windows (cero dependencias en el host).<br/>
+          • El flag <code>--rm</code> destruye el contenedor al presionar <code>Ctrl+C</code> sin dejar basura en el disco.<br/>
+          • Usa <code>host.docker.internal:4300</code> para puentear el tráfico hacia el Frontend publicado.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Versión Nativa Windows<br/>(Ejecutable CLI)</strong></td>
+        <td>
+          <code>cloudflared tunnel --url http://localhost:4300</code>
+        </td>
+        <td>
+          • Corre como ejecutable nativo en Windows instalado vía <code>winget</code>.<br/>
+          • Apunta directo a <code>localhost:4300</code>.<br/>
+          • No crea contenedores adicionales; consume menos de 20 MB de RAM.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="success-box">
+    <h4>Cómo Explicarlo en la Mesa de Examen ante el Profesor</h4>
+    <p>
+      <em>«Profesor, la arquitectura está completamente contenida en Docker. Para el cumplimiento del Punto 9 (Publicación con Túnel Seguro), utilizamos un contenedor efímero de Cloudflare mediante la imagen oficial <code>cloudflare/cloudflared</code>. Al ejecutarse con <code>--rm</code>, se crea un túnel saliente cifrado por TLS que redirige las peticiones externas directamente al reverse proxy Nginx en el puerto 4300, manteniendo PostgreSQL y la API en una red privada sin abrir puertos en el router.»</em>
+    </p>
+  </div>
+
+  <!-- SECCIÓN FACUNDO -->
+  <div class="page-break"></div>
+  <h2>2. Tareas Desarrolladas por Facundo: Base de Datos y Alta Disponibilidad (DBA)</h2>
+
+  <h3>2.1. Generación Masiva de Datos: 6 Millones de Registros (Punto 4)</h3>
+  <ul>
+    <li><strong>Script Generador Sintético:</strong> Implementación de scripts batch en Node.js (<code>seed-usuarios.mjs</code> y <code>seed-actividad.mjs</code>) que poblaron la base de datos con <strong>20.000 usuarios maestros</strong> y distribuyeron **6.000.000 de filas transaccionales** en la tabla <code>gymbro.series_realizadas</code>.</li>
+    <li><strong>Estructura Relacional Realista:</strong> Cada registro contiene IDs UUID, marcas temporales históricas, ejercicios completados, pesos levantados y series asociadas a sesiones de entrenamiento reales.</li>
+  </ul>
+
+  <h3>2.2. Optimización y Rendimiento SQL con Índices B-Tree (Punto 5)</h3>
+  <ul>
+    <li><strong>Diagnóstico con <code>EXPLAIN ANALYZE</code>:</strong> Análisis de los planes de ejecución sobre las 8 consultas críticas del backend antes de indexar, detectando cuellos de botella por escaneo secuencial masivo (<em>Seq Scan</em>) que tardaban más de 800 ms.</li>
+    <li><strong>Indexación Estratégica:</strong> Creación de índices B-Tree específicos (ej. <code>idx_series_usuario_fecha</code>, <code>idx_marcas_fuerza_ejercicio</code>) que transformaron las consultas en búsquedas por índice (<em>Index Scan</em> / <em>Bitmap Index Scan</em>), logrando tiempos de respuesta de <strong>menos de 5 milisegundos</strong>.</li>
+  </ul>
+
+  <h3>2.3. Clúster de Alta Disponibilidad con Patroni, etcd y HAProxy (Punto 6)</h3>
+  <ul>
+    <li><strong>Topología de 3 Nodos PostgreSQL 17:</strong> Despliegue de <code>gymbro-db-node1</code>, <code>gymbro-db-node2</code> y <code>gymbro-db-node3</code> en contenedores Docker independientes.</li>
+    <li><strong>Orquestación y Consenso con Patroni y etcd:</strong> Cluster de 3 nodos <code>etcd</code> (consenso Raft). Patroni monitorea la salud de los nodos y gestiona la elección de líder.</li>
+    <li><strong>Replicación Física por Streaming:</strong> Transmisión continua de los registros WAL en tiempo real desde el nodo Primario hacia las réplicas.</li>
+    <li><strong>Failover Automático en &lt; 30 Segundos:</strong> Si el nodo Primario se detiene, etcd detecta la pérdida de heartbeat y Patroni promueve automáticamente una réplica sana a nuevo Primario sin intervención manual ni pérdida de datos.</li>
+    <li><strong>Balanceador HAProxy (Doble Puerto):</strong>
+      <ul>
+        <li><strong>Puerto 55433 (Escritura):</strong> Envía las operaciones <code>INSERT/UPDATE/DELETE</code> exclusivamente al nodo Primario activo.</li>
+        <li><strong>Puerto 55434 (Lectura):</strong> Distribuye consultas <code>SELECT</code> balanceadas entre los nodos réplica.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>2.4. Automatización de Backups y Herramientas de Base de Datos</h3>
+  <ul>
+    <li><strong>Contenedor de Respaldos:</strong> Daemon <code>gymbro-postgres-backup</code> programado para generar dumps periódicos de base de datos con <code>pg_dump</code>.</li>
+    <li><strong>Gestión con pgAdmin 4:</strong> Servidor <code>gymbro-pgadmin</code> (puerto 5051) precargado con las conexiones al clúster y al balanceador HAProxy.</li>
+    <li><strong>MantisBT:</strong> Configuración de campos personalizados y vistas segregadas para el rol de DBA (<code>facundo_db</code>).</li>
+  </ul>
+
+  <!-- SECCIÓN ALDO -->
+  <h2>3. Tareas Desarrolladas por Aldo: DevOps, CI/CD, Contenedores y Redes</h2>
+
+  <h3>3.1. Contenedorización de la Aplicación Web (Punto 7)</h3>
+  <ul>
+    <li><strong>Backend Dockerfile:</strong> Imagen basada en <code>node:24-alpine</code>, optimizada para entorno monorepo (inclusión del paquete <code>shared/</code>), ejecución bajo usuario sin privilegios y arranque con Express.</li>
+    <li><strong>Frontend Multi-Stage Dockerfile:</strong>
+      <ul>
+        <li><em>Stage 1 (Build):</em> Compilación de Angular 22 en un entorno Node.js temporal.</li>
+        <li><em>Stage 2 (Runtime):</em> Servidor <strong>Nginx Alpine</strong> ultraliviano que sirve la SPA y opera como <strong>Reverse Proxy</strong>, enrutando <code>/api/</code> hacia el backend interno.</li>
+      </ul>
+    </li>
+    <li><strong>Compose Unificado:</strong> Diseño del <code>docker-compose.yml</code> maestro integrando redes, variables de entorno y mapeo de puertos.</li>
+  </ul>
+
+  <h3>3.2. Pipeline de CI/CD y Automatización en GitHub Actions (Punto 8)</h3>
+  <ul>
+    <li><strong>Workflow Automatizado (<code>.github/workflows/ci-cd.yml</code>):</strong>
+      <ul>
+        <li><strong>Etapa CI (Integración Continua):</strong> Descarga de código, instalación de dependencias y ejecución de pruebas unitarias automatizadas (validación en verde en &lt; 1 minuto).</li>
+        <li><strong>Etapa CD (Despliegue Continuo):</strong> Compilación de imágenes Docker y publicación multirregistro en <strong>Docker Hub</strong> (<code>aldodante</code>) y <strong>GitHub Container Registry (GHCR)</strong>.</li>
+      </ul>
+    </li>
+    <li><strong>Guía de Rollback (<code>docs/ROLLBACK.md</code>):</strong> Protocolo operativo de contingencia para revertir versiones defectuosas mediante etiquetas versionadas.</li>
+  </ul>
+
+  <h3>3.3. Automatización con Watchtower y Scripts de Despliegue</h3>
+  <ul>
+    <li><strong>Watchtower (<code>gymbro-watchtower</code>):</strong> Vigila el registro Docker Hub y actualiza automáticamente los contenedores en caliente al detectar una nueva versión de imagen.</li>
+    <li><strong>Lanzadores de Despliegue:</strong> Creación de scripts batch (<code>Interfaces_SmartGymBro.bat</code>, <code>Restaurar_Mantis_Notebook.bat</code>) para el arranque coordinado de todo el stack en un clic.</li>
+  </ul>
+
+  <!-- PÁGINA APAISADA: MATRIZ DE RESPONSABILIDADES Y ARQUITECTURA -->
+  <div class="landscape-page">
+    <h2>Matriz Comparativa de Tareas y Roles Técnicos: Facundo vs Aldo</h2>
+    <p>
+      Este cuadro consolida las responsabilidades, tecnologías implementadas y puntos del Trabajo Práctico asignados a cada integrante.
+    </p>
+
+    <table class="landscape-table">
+      <thead>
+        <tr>
+          <th style="width: 12%;">Área / Punto</th>
+          <th style="width: 44%;">Facundo (DBA & Alta Disponibilidad)</th>
+          <th style="width: 44%;">Aldo (DevOps, CI/CD & Infraestructura)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Punto 4 & 7<br/>Datos y Docker</strong></td>
+          <td>
+            <strong>Generador Masivo de 6M de Registros:</strong><br/>
+            • 20.000 usuarios maestros sintéticos y 6.000.000 de filas en <code>series_realizadas</code>.<br/>
+            • Scripts batch en Node.js con inserción optimizada y validación referencial.
+          </td>
+          <td>
+            <strong>Contenedorización Web (Frontend + Backend):</strong><br/>
+            • <code>backend/Dockerfile</code> con Node.js 24 Alpine y monorepo.<br/>
+            • <code>frontend/Dockerfile</code> multi-stage (Angular 22 build + Nginx Alpine runtime).<br/>
+            • Reverse proxy en Nginx para redirigir <code>/api/</code> transparentemente.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Punto 5 & 8<br/>Optimización / CI-CD</strong></td>
+          <td>
+            <strong>Análisis EXPLAIN y Creación de Índices:</strong><br/>
+            • Análisis de costos y tiempos de ejecución sobre 8 consultas críticas.<br/>
+            • Índices B-Tree compuestos que redujeron tiempos de 800 ms a &lt; 5 ms.<br/>
+            • Eliminación de cuellos de botella en lecturas de historial de entrenamiento.
+          </td>
+          <td>
+            <strong>Pipeline de CI/CD en GitHub Actions:</strong><br/>
+            • Automatización de pruebas unitarias en runner Node 26 LTS.<br/>
+            • Publicación multirregistro en Docker Hub (<code>aldodante</code>) y GHCR.<br/>
+            • Elaboración de la guía de contingencia y rollback (<code>docs/ROLLBACK.md</code>).
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Punto 6 & 9<br/>Clúster / Publicación</strong></td>
+          <td>
+            <strong>Clúster HA con Patroni, etcd y HAProxy:</strong><br/>
+            • Topología de 3 nodos PostgreSQL con streaming replication física.<br/>
+            • Consenso distribuido con 3 nodos etcd y failover automático en &lt; 30 segundos.<br/>
+            • Balanceador HAProxy: puerto 55433 (escritura) y 55434 (lectura).
+          </td>
+          <td>
+            <strong>Publicación con Túnel Cifrado (Cloudflare Tunnel):</strong><br/>
+            • Exposición con contenedor efímero <code>cloudflare/cloudflared:latest</code>.<br/>
+            • Túnel reverso cifrado saliente por TLS hacia el puerto 4300.<br/>
+            • Aislamiento perimetral: base de datos y backend blindados en la red interna.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Operación y<br/>Mantenimiento</strong></td>
+          <td>
+            <strong>Respaldos y Herramientas DBA:</strong><br/>
+            • Contenedor <code>gymbro-postgres-backup</code> con dumps automáticos de <code>pg_dump</code>.<br/>
+            • Configuración del servidor <code>gymbro-pgadmin</code> (puerto 5051).<br/>
+            • Dashboard de base de datos en MantisBT asignado a <code>facundo_db</code>.
+          </td>
+          <td>
+            <strong>Automatización de Actualizaciones y Scripts:</strong><br/>
+            • Actualización en caliente de contenedores con <code>gymbro-watchtower</code>.<br/>
+            • Scripts batch de inicio rápido (<code>Interfaces_SmartGymBro.bat</code>).<br/>
+            • Restaurador automático de backup de MantisBT para notebooks.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

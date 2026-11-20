@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dossier Técnico: n8n y Ciberseguridad - SmartGymBro</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 1.6cm 1.4cm 1.6cm 1.4cm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    @page landscape-section {
+      size: A4 landscape;
+      margin: 1.4cm 1.2cm 1.4cm 1.2cm;
+    }
+
+    .landscape-page {
+      page: landscape-section;
+      break-before: page;
+      page-break-before: always;
+      break-after: page;
+      page-break-after: always;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      background-color: #ffffff;
+      line-height: 1.55;
+      font-size: 13.5px;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Encabezado */
+    .header {
+      border-bottom: 3px solid #1e3a8a;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #1e3a8a;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .header .subtitle {
+      color: #475569;
+      font-size: 14px;
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .meta-bar {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .badge-accent {
+      background: #f0fdf4;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+
+    /* Tipografía y secciones */
+    h2 {
+      color: #1e3a8a;
+      font-size: 18px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-top: 26px;
+      margin-bottom: 14px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      color: #0f172a;
+      font-size: 15px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: #1e293b;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 12px;
+      padding-left: 22px;
+      color: #1e293b;
+    }
+
+    li {
+      margin-bottom: 5px;
+    }
+
+    /* Cajas destacadas (Fondo blanco/claro, bordes sobrios) */
+    .info-box {
+      background-color: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 5px solid #2563eb;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .info-box h4 {
+      margin: 0 0 6px 0;
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .alert-box {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 5px solid #dc2626;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .alert-box h4 {
+      margin: 0 0 6px 0;
+      color: #991b1b;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* Bloques de código legibles para impresión (Fondo claro, texto oscuro) */
+    pre {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      color: #0f172a;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 12px 0;
+      page-break-inside: avoid;
+    }
+
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      background-color: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+
+    /* Tablas estándar */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12.5px;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+    }
+
+    td {
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      vertical-align: top;
+      color: #1e293b;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    /* Tablas apaisadas de gran formato */
+    .landscape-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+
+    .landscape-table th {
+      background-color: #e2e8f0;
+      color: #0f172a;
+      font-size: 13.5px;
+      padding: 10px 12px;
+      border: 1.5px solid #94a3b8;
+    }
+
+    .landscape-table td {
+      padding: 10px 12px;
+      border: 1.5px solid #cbd5e1;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .tag-crit {
+      display: inline-block;
+      padding: 2px 7px;
+      font-weight: 700;
+      font-size: 11px;
+      border-radius: 4px;
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #f87171;
+    }
+
+    .tag-warn {
+      display: inline-block;
+      padding: 2px 7px;
+      font-weight: 700;
+      font-size: 11px;
+      border-radius: 4px;
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fbbf24;
+    }
+
+    .tag-info {
+      display: inline-block;
+      padding: 2px 7px;
+      font-weight: 700;
+      font-size: 11px;
+      border-radius: 4px;
+      background-color: #e0f2fe;
+      color: #075985;
+      border: 1px solid #7dd3fc;
+    }
+
+    .diagram-box {
+      background-color: #ffffff;
+      border: 1.5px solid #2563eb;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      margin: 12px 0;
+      color: #1e3a8a;
+      page-break-inside: avoid;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO PRINCIPAL -->
+  <div class="header">
+    <h1>Dossier de Estudio: Automatización (n8n) y Ciberseguridad</h1>
+    <div class="subtitle">Guía de Fundamentos, Arquitectura e Implementación Práctica para Examen y Defensa</div>
+    <div class="meta-bar">
+      <span class="badge">Proyecto: SmartGymBro</span>
+      <span class="badge">Cátedra: HIA 2026 (UNJu)</span>
+      <span class="badge-accent">Módulos: Sonia (n8n) & Rodrigo (Seguridad)</span>
+      <span class="badge">Apto para Impresión (Light Theme)</span>
+    </div>
+  </div>
+
+  <!-- PARTE 1: N8N -->
+  <h2>PARTE 1: Automatización de Infraestructura y Orquestación con n8n</h2>
+
+  <h3>1.1. Fundamentos Teóricos de n8n e iPaaS</h3>
+  <p>
+    <strong>n8n</strong> es un orquestador de flujos de trabajo (*Workflow Automation*) de código abierto clasificado dentro del modelo <strong>iPaaS (Integration Platform as a Service)</strong>. En el ecosistema de SmartGymBro se ejecuta autohospedado (*on-premise*) mediante el contenedor Docker <code>gymbro-n8n</code> sobre la red interna <code>gymbro-n8n-net</code>.
+  </p>
+  <p>
+    A diferencia de servicios comerciales cerrados en la nube (como Zapier o Make), el despliegue local garantiza tres propiedades críticas:
+  </p>
+  <ul>
+    <li><strong>Soberanía de Datos:</strong> Ni los respaldos de la base de datos, ni las trazas de infraestructura ni las claves de autenticación salen a la nube pública.</li>
+    <li><strong>Latencia Mínima y Red Local:</strong> n8n se comunica con Prometheus, MantisBT, Nextcloud y PostgreSQL a velocidad de red local usando el DNS interno de Docker (<code>host.docker.internal</code>).</li>
+    <li><strong>Ejecución y Extensibilidad Ilimitadas:</strong> Permite escribir transformaciones en JavaScript estándar y no cobra costos por volumen de tareas ejecutadas.</li>
+  </ul>
+
+  <div class="info-box">
+    <h4>Conceptos Esenciales de la Arquitectura de n8n</h4>
+    <ul>
+      <li><strong>DAG (Grafo Dirigido Acíclico):</strong> Los flujos se componen de nodos ordenados secuencialmente o en paralelo que procesan información de izquierda a derecha.</li>
+      <li><strong>Estructura de Datos JSON:</strong> Todo dato que viaja entre nodos se encapsula en una lista de objetos JSON con la propiedad <code>json</code> (ej. <code>$input.all()[0].json</code>).</li>
+      <li><strong>Mecanismos de Activación (Triggers):</strong> Pueden ser <em>Polling/Schedule</em> (consultas cíclicas por tiempo) o <em>Webhooks</em> (recepción reactiva de peticiones HTTP POST).</li>
+      <li><strong>Doble Persistencia (Entidad vs Historial):</strong> n8n guarda los flujos en su SQLite interno (<code>database.sqlite</code>). La tabla <code>workflow_entity</code> almacena el borrador de diseño visual, mientras que <code>workflow_history</code> y <code>workflow_published_version</code> almacenan la versión compilada que realmente ejecuta el motor en segundo plano cuando el flujo está <em>Published</em> (Activo).</li>
+    </ul>
+  </div>
+
+  <h3>1.2. Cómo se Construye e Implementa un Flujo en el Lienzo</h3>
+  <p>
+    Cualquier flujo de control o automatización en n8n sigue una metodología de 5 pasos secuenciales:
+  </p>
+  <div class="diagram-box">
+[ 1. Trigger (Inicio) ] ──► [ 2. HTTP Request / Ingesta ] ──► [ 3. Code (Lógica JS) ] ──► [ 4. IF (Control) ] ──► [ 5. Acción Final ]
+  </div>
+  <ol>
+    <li><strong>Disparador (Trigger):</strong> Se define cuándo corre el proceso (ej. un nodo <code>Schedule Trigger</code> configurado cada 30 segundos).</li>
+    <li><strong>Ingesta de Información:</strong> Un nodo como <code>HTTP Request</code> consulta una API REST (ej. <code>GET /api/v1/rules</code> de Prometheus).</li>
+    <li><strong>Procesamiento y Limpieza (Code Node):</strong> Mediante JavaScript se accede a los datos anteriores, se aplican filtros y se preparan las variables de salida:
+      <pre>const items = $input.all();
+return items.map(item => ({
+  json: {
+    nombre: item.json.name,
+    esCritico: item.json.severity === 'critical',
+    timestamp: new Date().toISOString()
+  }
+}));</pre>
+    </li>
+    <li><strong>Toma de Decisiones (Nodo IF):</strong> Evalúa una expresión booleana (ej. <code>{{ $json.esCritico }} == true</code>) bifurcando el camino en <em>True</em> y <em>False</em>.</li>
+    <li><strong>Salida Operativa:</strong> Creación de tickets en MantisBT, envío de mails por SMTP o almacenamiento en Nextcloud vía WebDAV.</li>
+  </ol>
+
+  <h3>1.3. ¿Cómo Implementar un Flujo con IA y Base Vectorizada (RAG)?</h3>
+  <div class="info-box">
+    <h4>Pregunta de Examen: "Diseñe un flujo de control que responda dudas técnicas usando un nodo de IA y una base vectorizada"</h4>
+    <p>
+      El patrón requerido es <strong>RAG (Retrieval-Augmented Generation / Generación Aumentada por Recuperación)</strong>. En lugar de permitir que la IA invente datos, la IA consulta una base de datos vectorial que contiene la documentación técnica del proyecto antes de generar su respuesta.
+    </p>
+  </div>
+  <p><strong>Arquitectura de Implementación en n8n:</strong></p>
+  <div class="diagram-box">
+[ Webhook / Chat Trigger ] ──► [ AI AGENT (Orquestador Central) ]
+                                    │
+                                    ├── [ Model: Google Gemini / OpenAI Chat Model ]
+                                    ├── [ Vector Store Tool: PostgreSQL pgvector / Qdrant ]
+                                    │         └── [ Embeddings: Text-Embedding-004 ]
+                                    └── [ Memory: Window Buffer Memory (Historial) ]
+  </div>
+  <p><strong>Pasos para construirlo en el lienzo de n8n:</strong></p>
+  <ol>
+    <li><strong>Nodo Central:</strong> Se arrastra el nodo <strong><code>AI Agent</code></strong> (sección <em>Advanced AI</em>). Es el coordinador del razonamiento.</li>
+    <li><strong>Conectar el Modelo de Lenguaje:</strong> Al subconector inferior <em>Model</em> del AI Agent, se conecta el nodo <strong><code>Google Gemini Chat Model</code></strong> (o <code>OpenAI Chat Model</code>). Se configura la API Key y se fija una temperatura baja (<code>temperature = 0.2</code>) para evitar alucinaciones.</li>
+    <li><strong>Conectar la Base Vectorizada:</strong> Al subconector <em>Tool</em> o <em>Vector Store</em>, se conecta <strong><code>PostgreSQL Vector Store</code></strong> (con la extensión <code>pgvector</code>) o <code>Qdrant</code>.</li>
+    <li><strong>Conectar el Modelo de Embeddings:</strong> Al nodo de Vector Store se le vincula un subnodo <strong><code>Embeddings</code></strong>. Este traduce las preguntas humanas a vectores matemáticos para calcular similitud semántica.</li>
+    <li><strong>Prompt de Control del Sistema (System Message):</strong> Dentro del AI Agent se establece la directiva inquebrantable de gobernanza:
+      <pre>Eres el Asistente Técnico de Operaciones de SmartGymBro.
+REGLAS OBLIGATORIAS:
+1. Responde ÚNICAMENTE utilizando el contexto recuperado de la base vectorizada.
+2. Si la respuesta no está en los documentos recuperados, responde textualmente:
+   "No dispongo de evidencia en la base de conocimiento para responder a esta consulta."
+3. Cita siempre el componente o contenedor de referencia.</pre>
+    </li>
+  </ol>
+
+  <h3>1.4. Los 4 Flujos Implementados en SmartGymBro</h3>
+  <ul>
+    <li><strong>WF1 – Alertas de Infraestructura en Tiempo Real:</strong> Centinela reactivo. Consulta cada 30s a Prometheus (<code>/api/v1/rules</code>). Cuando detecta <code>ContainerDown</code>, <code>PostgresDown</code> o <code>BackendDown</code>, ejecuta deduplicación con marca temporal (<code>startsAt</code> vs <code>created_at</code>) y abre incidencias en MantisBT asignadas al especialista por categoría (<code>facundo_db</code>, <code>gonzalo_dev</code>, etc.) con severidad <code>crash</code>.</li>
+    <li><strong>WF2 – Auditoría Diaria de Backups:</strong> Cron diario a las 03:00 hs. Lee <code>/data/pg-backups/</code>, verifica tamaño y ejecuta <code>pg_restore --list</code> para comprobar la cabecera e integridad de los datos. Si falla, despacha un correo de alarma SMTP a Sonia.</li>
+    <li><strong>WF3 – Informe Semanal de Rendimiento y Heurística con IA:</strong> Lee latencia HTTP, disponibilidad de <code>/api/health</code>, reinicios y memoria. Envía las métricas al contenedor <code>gymbro-informe-analyzer</code> (Python) para clasificar el riesgo (OK, WARN, CRIT), sube el reporte a Nextcloud vía WebDAV y notifica a supervisores.</li>
+    <li><strong>WF-RESTORE – Prueba Controlada de Restauración:</strong> Valida que los backups sean restaurables. Descarga el dump e impacta las tablas en el contenedor efímero <code>gymbro-pgrestore-test</code> (PostgreSQL 17 en memoria RAM <code>tmpfs</code>) sin tocar la base productiva.</li>
+  </ul>
+
+  <!-- PARTE 2: CIBERSEGURIDAD -->
+  <div class="page-break"></div>
+  <h2>PARTE 2: Ciberseguridad Aplicada, Hardening y Gestión de Incidencias</h2>
+
+  <h3>2.1. Marco Teórico: Tríada CIA y OWASP Top 10</h3>
+  <p>
+    La seguridad del sistema SmartGymBro se diseñó alineada a la <strong>Tríada CIA</strong>:
+  </p>
+  <ul>
+    <li><strong>Confidencialidad:</strong> Los historiales de pesaje, rutinas privadas y contraseñas (cifradas con <code>bcrypt</code>) no deben ser accesibles entre atletas ni filtradas en errores.</li>
+    <li><strong>Integridad:</strong> Protección de tokens JWT mediante firmas criptográficas inviolables para evitar falsificación de identidad de usuario.</li>
+    <li><strong>Disponibilidad:</strong> Protección del cluster de PostgreSQL (Patroni/etcd) y límites de payload para neutralizar ataques de denegación de servicio (DoS).</li>
+  </ul>
+  <p><strong>Riesgos del OWASP Top 10 Mitigados:</strong></p>
+  <ul>
+    <li><strong>A01: Broken Access Control:</strong> Desarrolladores restringidos a ver únicamente sus tickets asignados en MantisBT.</li>
+    <li><strong>A02: Cryptographic Failures:</strong> Rechazo de tokens con algoritmos no autorizados o firmas no validadas.</li>
+    <li><strong>A03: Injection (SQLi):</strong> Consultas parametrizadas en Sequelize y neutralización de entradas maliciosas.</li>
+    <li><strong>A05: Security Misconfiguration:</strong> Fuga de consultas SQL en respuestas 500 y exposición de huella tecnológica mediante <code>X-Powered-By</code>.</li>
+  </ul>
+
+  <h3>2.2. Implementación Técnica de Auditoría SAST (`npm audit` y remediación)</h3>
+  <p>
+    Se ejecutó un análisis estático de seguridad en el código y árbol de dependencias mediante <code>npm audit</code>:
+  </p>
+  <ul>
+    <li><strong>Diagnóstico Inicial:</strong> Se detectaron <strong>63 vulnerabilidades</strong>. El 60% se concentraba en versiones deprecadas de Angular 19 (fallas de XSS en <code>@angular/compiler</code>) y paquetes backend con potencial DoS (<code>body-parser</code> 2.3.0 y fugas de memoria en <code>zod</code>).</li>
+    <li><strong>Remediación Aplicada:</strong>
+      <ul>
+        <li>Actualización de parches compatibles: <code>body-parser</code> $\rightarrow$ 2.4.0, <code>proxy-addr</code> $\rightarrow$ 2.0.8, <code>moment</code> $\rightarrow$ 2.31.0.</li>
+        <li>Mitigación a nivel de aplicación para Zod: Se fijó en Express un tamaño máximo de cuerpo JSON (<code>app.use(express.json({ limit: '1mb' }))</code>) para impedir el desbordamiento de memoria por colecciones gigantes.</li>
+        <li>Migración a versión soportada de Angular: Eliminó el 100% de las fallas de sanitización del DOM, reduciendo el reporte de 63 a 26 advertencias residuales únicamente de herramientas locales fuera del código del cliente.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>2.3. Blindaje de la API en Node.js/Express (Hardening de Código)</h3>
+
+  <p><strong>1. Eliminación de Fuga de Información (Information Disclosure en <code>app.js</code>):</strong></p>
+  <pre>// Middleware global de errores seguro (4 parámetros)
+app.use((err, req, res, next) => {
+  // 1. Log interno en consola del servidor para diagnóstico DevOps
+  console.error(`[ERROR INTERNO] Tipo: ${err.name} | Ruta: ${req.method} ${req.path}`);
+
+  // 2. Respuesta opaca hacia el cliente: jamás exponer err.sql ni err.message
+  const status = err.status || 500;
+  res.status(status).json({
+    error: 'Error interno del servidor',
+    codigo: status,
+    mensaje: 'La solicitud no pudo procesarse. El incidente ha sido registrado para auditoría.'
+  });
+});</pre>
+
+  <p><strong>2. Validación Estricta de JWT en <code>middlewares/auth.js</code>:</strong></p>
+  <pre>const jwt = require('jsonwebtoken');
+
+function requireAuth(req, res, next) {
+  const header = req.headers['authorization'];
+  
+  // Exigir obligatoriamente el formato Bearer
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Esquema de autenticación inválido. Formato: Bearer <token>' });
+  }
+
+  const token = header.split(' ')[1];
+  try {
+    // Forzar algoritmo HS256 y verificar con la clave del servidor
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    
+    // Validar presencia de identificador de usuario
+    if (!payload.sub && !payload.id) {
+      return res.status(401).json({ error: 'Token inválido: falta sujeto' });
+    }
+
+    req.user = payload;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Token expirado o firma criptográfica no válida' });
+  }
+}</pre>
+
+  <p><strong>3. Inyección de Cabeceras HTTP de Seguridad:</strong></p>
+  <pre>// Deshabilitar huella del servidor
+app.disable('x-powered-by');
+
+// Cabeceras protectoras contra Clickjacking y MIME-Sniffing
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});</pre>
+
+  <!-- PÁGINA APAISADA 1: MATRIZ DE INCIDENCIAS -->
+  <div class="landscape-page">
+    <h2>Matriz de las 10 Incidencias de Ciberseguridad Documentadas en MantisBT</h2>
+    <p>
+      Esta matriz documenta los 10 incidentes gestionados en MantisBT, detallando la clasificación de severidad según el estándar del proyecto, el responsable asignado y las acciones de remediación aplicadas.
+    </p>
+
+    <table class="landscape-table">
+      <thead>
+        <tr>
+          <th style="width: 5%;">ID</th>
+          <th style="width: 25%;">Vulnerabilidad / Incidente</th>
+          <th style="width: 10%;">Severidad</th>
+          <th style="width: 10%;">Categoría</th>
+          <th style="width: 10%;">Asignado</th>
+          <th style="width: 40%;">Impacto Técnico y Mitigación Aplicada</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>#1</strong></td>
+          <td>Fuga de trazas SQL internas en respuestas de error HTTP 500</td>
+          <td><span class="tag-crit">Crash</span></td>
+          <td>Backend</td>
+          <td><code>gonzalo_dev</code></td>
+          <td><strong>Impacto:</strong> Exponía nombres de tablas y parámetros ante fallas de base de datos.<br/><strong>Mitigación:</strong> Se implementó un middleware de error centralizado que devuelve mensajes genéricos al cliente.</td>
+        </tr>
+        <tr>
+          <td><strong>#2</strong></td>
+          <td>Aceptación de tokens JWT sin esquema estricto Bearer</td>
+          <td><span class="tag-warn">Major</span></td>
+          <td>Seguridad</td>
+          <td><code>gonzalo_dev</code></td>
+          <td><strong>Impacto:</strong> Incumplimiento del estándar RFC 6750 y parsing ambiguo de tokens.<br/><strong>Mitigación:</strong> Se forzó validación estricta de encabezado <code>Bearer &lt;token&gt;</code> y algoritmo <code>HS256</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>#3</strong></td>
+          <td>Exposición de huella tecnológica mediante cabecera <code>X-Powered-By</code></td>
+          <td><span class="tag-info">Minor</span></td>
+          <td>Backend</td>
+          <td><code>gonzalo_dev</code></td>
+          <td><strong>Impacto:</strong> Informaba que el servidor corría bajo Express, facilitando fingerprinting de exploits.<br/><strong>Mitigación:</strong> Se configuró <code>app.disable('x-powered-by')</code> en Express.</td>
+        </tr>
+        <tr>
+          <td><strong>#4</strong></td>
+          <td>Dependencia vulnerable <code>body-parser</code> con riesgo de DoS</td>
+          <td><span class="tag-warn">Major</span></td>
+          <td>Seguridad</td>
+          <td><code>aldo_front</code></td>
+          <td><strong>Impacto:</strong> Payloads malformados podían bloquear el bucle de eventos (Event Loop) de Node.js.<br/><strong>Mitigación:</strong> Actualización a <code>body-parser</code> 2.4.0 y límite de carga útil fijado en 1 MB.</td>
+        </tr>
+        <tr>
+          <td><strong>#5</strong></td>
+          <td>Ausencia de cabecera contra Clickjacking (<code>X-Frame-Options</code>)</td>
+          <td><span class="tag-info">Minor</span></td>
+          <td>Frontend</td>
+          <td><code>aldo_front</code></td>
+          <td><strong>Impacto:</strong> La aplicación podía ser embebida en iframes invisibles en sitios web de terceros.<br/><strong>Mitigación:</strong> Inyección global de cabecera HTTP <code>X-Frame-Options: DENY</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>#6</strong></td>
+          <td>Falla de restricción de clave foránea al borrar usuario con historial</td>
+          <td><span class="tag-warn">Major</span></td>
+          <td>Database</td>
+          <td><code>facundo_db</code></td>
+          <td><strong>Impacto:</strong> La base de datos abortaba con error 500 no controlado por violación de integridad.<br/><strong>Mitigación:</strong> Configuración de borrado lógico (soft-delete) y cascadas referenciales en Sequelize.</td>
+        </tr>
+        <tr>
+          <td><strong>#7</strong></td>
+          <td>Riesgo de agotamiento de memoria por colecciones en Zod</td>
+          <td><span class="tag-warn">Major</span></td>
+          <td>Backend</td>
+          <td><code>gonzalo_dev</code></td>
+          <td><strong>Impacto:</strong> Arrays excesivamente anidados en creación de rutinas consumían la memoria del worker.<br/><strong>Mitigación:</strong> Restricción estricta de tamaño en Express y validación de máximo 20 items por lote.</td>
+        </tr>
+        <tr>
+          <td><strong>#8</strong></td>
+          <td>Falta de limitación de tasa (*Rate Limiting*) en endpoint de login</td>
+          <td><span class="tag-warn">Major</span></td>
+          <td>Seguridad</td>
+          <td><code>gonzalo_dev</code></td>
+          <td><strong>Impacto:</strong> Vulnerabilidad a ataques de fuerza bruta continuos contra el algoritmo bcrypt.<br/><strong>Mitigación:</strong> Planificación de middleware limitador de intentos por dirección IP y usuario.</td>
+        </tr>
+        <tr>
+          <td><strong>#9</strong></td>
+          <td>PostgresDown: Caída del nodo primario del cluster de base de datos</td>
+          <td><span class="tag-crit">Crash</span></td>
+          <td>Database</td>
+          <td><code>facundo_db</code></td>
+          <td><strong>Impacto:</strong> Caída total de lectura/escritura si no actuaba el failover.<br/><strong>Mitigación:</strong> Promoción automática de réplica a nuevo líder vía Patroni y apertura automática de ticket en WF1.</td>
+        </tr>
+        <tr>
+          <td><strong>#10</strong></td>
+          <td>ContainerDown: Detención o caída inesperada de contenedor Docker</td>
+          <td><span class="tag-crit">Crash</span></td>
+          <td>Infra</td>
+          <td><code>sonia_dev</code></td>
+          <td><strong>Impacto:</strong> Pérdida de un servicio de la aplicación.<br/><strong>Mitigación:</strong> Detección en Prometheus, deduplicación temporal en WF1 y notificación inmediata en MantisBT.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PÁGINA APAISADA 2: CUADRO COMPARATIVO MAESTRO -->
+  <div class="landscape-page">
+    <h2>Cuadro Sinóptico Maestro de Arquitectura, Monitoreo y Resiliencia</h2>
+    <p>
+      Este cuadro consolida la arquitectura completa del proyecto SmartGymBro, detallando la interacción entre servicios, protocolos, seguridad y las políticas de recuperación ante desastres implementadas.
+    </p>
+
+    <table class="landscape-table">
+      <thead>
+        <tr>
+          <th style="width: 14%;">Componente</th>
+          <th style="width: 18%;">Rol en la Arquitectura</th>
+          <th style="width: 15%;">Tecnología Utilizada</th>
+          <th style="width: 15%;">Puertos y Redes</th>
+          <th style="width: 20%;">Configuración de Seguridad</th>
+          <th style="width: 18%;">Mecanismo de Resiliencia</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Centinela de Métricas</strong></td>
+          <td>Recolección de telemetría y disparo de alertas</td>
+          <td>Prometheus 2.x + cAdvisor + Exporters</td>
+          <td>TCP 9090 (Prometheus)<br/>TCP 9187 (Postgres)<br/>TCP 9189 (Docker)</td>
+          <td>Red aislada Docker. Exclusión explícita de contenedores efímeros de inicialización.</td>
+          <td>Buffer anti-falsos positivos (<code>for: 1m</code>) para evitar alarmas por micro-cortes.</td>
+        </tr>
+        <tr>
+          <td><strong>Orquestador de Automatización</strong></td>
+          <td>Procesamiento de alertas, auditoría de backups y reportes</td>
+          <td>n8n 2.44.6 (Workflows 1, 2, 3 y Restore)</td>
+          <td>TCP 5678<br/><code>gymbro-n8n-net</code></td>
+          <td>Clave de cifrado simétrica propia (<code>N8N_ENCRYPTION_KEY</code>). Versionado en SQLite.</td>
+          <td>Deduplicación temporal anti-flapping (crea tickets ante reincidencias reales).</td>
+        </tr>
+        <tr>
+          <td><strong>Gestor de Incidencias</strong></td>
+          <td>Registro, seguimiento y asignación ITSM</td>
+          <td>Mantis Bug Tracker 2.x + MySQL 8</td>
+          <td>TCP 8089 (Web/REST)<br/>TCP 3306 (MySQL)</td>
+          <td>RBAC estricto: Incidencias privadas por defecto (<code>VS_PRIVATE</code>). Tokens de API hashed.</td>
+          <td>Base de datos en volumen Docker con dumps versionados de respaldo.</td>
+        </tr>
+        <tr>
+          <td><strong>Almacenamiento de Informes</strong></td>
+          <td>Repositorio documental de auditoría y reportes IA</td>
+          <td>Nextcloud Server</td>
+          <td>TCP 8081<br/>Protocolo WebDAV</td>
+          <td>Credenciales de servicio parametrizadas vía variables de entorno en <code>.env</code>.</td>
+          <td>Volúmenes persistentes y versionado de archivos por WebDAV.</td>
+        </tr>
+        <tr>
+          <td><strong>Cluster de Alta Disponibilidad</strong></td>
+          <td>Persistencia y balanceo de base de datos</td>
+          <td>PostgreSQL 17 + Patroni + etcd + HAProxy</td>
+          <td>TCP 55433 (Escritura)<br/>TCP 55434 (Lectura)</td>
+          <td>Roles SQL segregados (usuario de app sin permisos de DROP ni DELETE en auditoría).</td>
+          <td>Consenso Raft (3 nodos etcd). Failover automático de líder en menos de 30 segundos.</td>
+        </tr>
+        <tr>
+          <td><strong>Backend de Aplicación</strong></td>
+          <td>API REST de lógica de negocio y entrenamiento</td>
+          <td>Node.js 24 + Express + Sequelize</td>
+          <td>TCP 3100<br/><code>gymbro-backend</code></td>
+          <td>Cabeceras HTTP de protección, JWT con algoritmo forzado <code>HS256</code> y error opaco.</td>
+          <td>Contenedor stateless; se reinicia automáticamente ante fallos (<code>restart: unless-stopped</code>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>
