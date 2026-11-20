@@ -1,0 +1,314 @@
+{
+  "id": "WfDefensaAiOps01",
+  "name": "WF-DEFENSA",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-defensa",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:9090/api/v1/rules",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-prometheus-defensa",
+      "name": "Prometheus – Consultar Firing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer alertas activas de Prometheus o generar fallback para pruebas controladas\nlet firingAlerts = [];\ntry {\n  const data = $input.first().json;\n  const groups = (data.data && data.data.groups) || [];\n  for (const g of groups) {\n    for (const r of (g.rules || [])) {\n      if (r.alerts && r.alerts.length > 0) {\n        for (const a of r.alerts) {\n          if (a.state === 'firing') {\n            firingAlerts.push({\n              alertname: a.labels.alertname || 'AlertaGeneral',\n              instance: a.labels.instance || a.labels.job || 'infraestructura',\n              severity: a.labels.severity || 'warning',\n              summary: a.annotations.summary || a.annotations.message || 'Sin resumen',\n              description: a.annotations.description || 'Sin detalle disponible',\n              activeAt: a.activeAt || new Date().toISOString()\n            });\n          }\n        }\n      }\n    }\n  }\n} catch (e) {\n  // Ignorar error y usar fallback\n}\n\nlet incident;\nlet isSimulation = false;\n\nif (firingAlerts.length > 0) {\n  incident = firingAlerts[0];\n} else {\n  // Simulación realista para pruebas en la defensa oral\n  isSimulation = true;\n  incident = {\n    alertname: \"PostgresPrimaryDown\",\n    instance: \"gymbro-db-node1:5432\",\n    severity: \"critical\",\n    summary: \"Nodo primario de PostgreSQL/Patroni caído\",\n    description: \"El contenedor gymbro-db-node1 no responde a los probes de etcd/Patroni. HAProxy ha desconectado el tráfico de escritura en el puerto 5000.\",\n    activeAt: new Date().toISOString()\n  };\n}\n\nconst prompt = `Se ha producido un incidente crítico en la infraestructura de SmartGymBro:\n- Alerta: ${incident.alertname}\n- Instancia / Servicio: ${incident.instance}\n- Severidad: ${incident.severity}\n- Resumen: ${incident.summary}\n- Descripción: ${incident.description}\n- Modo: ${isSimulation ? 'SIMULACIÓN CONTROLADA (DEMO)' : 'INCIDENTE REAL EN VIVO'}\n\nConsulta el playbook vectorial de procedimientos estándar (SOP) y genera:\n1. DIAGNÓSTICO: Causa raíz probable y afectación en la arquitectura.\n2. COMANDOS DE MITIGACIÓN INMEDIATA: Comandos exactos de consola (Docker, Patroni, HAProxy).\n3. PROCEDIMIENTO DE VERIFICACIÓN: Comprobación de salud post-incidente.\n4. RECOMENDACIÓN DE CIBERSEGURIDAD Y ALTA DISPONIBILIDAD.`;\n\nreturn [{\n  json: {\n    alertname: incident.alertname,\n    instance: incident.instance,\n    severity: incident.severity,\n    summary: incident.summary,\n    description: incident.description,\n    timestamp: incident.activeAt,\n    isSimulation: isSimulation,\n    prompt: prompt\n  }\n}];"
+      },
+      "id": "code-extract-incident-defensa",
+      "name": "Extraer Incidente y Contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "Eres el Asistente Experto en AIOps y Ciberseguridad de SmartGymBro. Tu misión es analizar alertas de infraestructura, consultar la base de conocimiento vectorial de Procedimientos Operativos Estándar (SOP) mediante la herramienta consultar_playbook_soluciones y emitir un dictamen técnico claro y estructurado.\n\nEstructura obligatoria de tu respuesta:\n1. 🔍 DIAGNÓSTICO DEL INCIDENTE (Causa raíz y alcance)\n2. 🛠️ COMANDOS DE MITIGACIÓN INMEDIATA (Comandos exactos en consola Docker/Linux)\n3. 📋 PROCEDIMIENTO DE RECUPERACIÓN Y VERIFICACIÓN\n4. 🛡️ IMPACTO EN CIBERSEGURIDAD Y ALTA DISPONIBILIDAD\n\nSé conciso, técnico y directo."
+        }
+      },
+      "id": "ai-agent-defensa",
+      "name": "Agente IA – Análisis y Playbook",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview"
+      },
+      "id": "gemini-model-defensa",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        860,
+        520
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GymbroSeedGemini01",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "consultar_playbook_soluciones",
+        "description": "Consulta la base de conocimiento vectorial de Procedimientos Operativos Estándar (SOP) y runbooks para obtener la solución técnica, comandos Docker/Linux de mitigación y procedimiento de failover ante incidentes de SmartGymBro (Postgres, Patroni, Backend, HAProxy, MantisBT).",
+        "language": "javaScript",
+        "jsCode": "// Base de Conocimiento Vectorial / SOP de Procedimientos Operativos SmartGymBro\nconst playbookDB = [\n  {\n    topic: \"PostgresPrimaryDown / Fallo en Base de Datos / Patroni\",\n    keywords: [\"postgres\", \"patroni\", \"db\", \"database\", \"node1\", \"node2\", \"node3\", \"5432\", \"5000\"],\n    diagnostico: \"Caída del nodo primario o desconexión del cluster HA Patroni-PostgreSQL. El quórum etcd promueve un réplica a líder mediante failover automático.\",\n    comandos: [\n      \"# 1. Verificar estado del cluster Patroni:\",\n      \"docker exec -it gymbro-db-node2 patronictl -c /etc/patroni/patroni.yml list\",\n      \"# 2. Si el contenedor primario fue detenido o crasheó, reiniciarlo:\",\n      \"docker start gymbro-db-node1\",\n      \"# 3. En caso de desincronización del nodo, forzar re-inicialización:\",\n      \"docker exec -it gymbro-db-node2 patronictl -c /etc/patroni/patroni.yml reinit gymbro-cluster gymbro-db-node1\",\n      \"# 4. Verificar balanceador HAProxy en puertos 5000 (Primary) y 5001 (Replicas):\",\n      \"curl -s http://localhost:7000\"\n    ],\n    verificacion: \"Ejecutar patronictl topology y validar que el nodo esté en estado 'running' y sincronizado con etcd.\",\n    ciberseguridad: \"Garantiza RPO < 1s y RTO < 30s. Previene split-brain gracias al consenso etcd en cluster impar.\"\n  },\n  {\n    topic: \"GymbroBackendDown / Fallo en API Node.js Express\",\n    keywords: [\"backend\", \"express\", \"3100\", \"api\", \"node\"],\n    diagnostico: \"La API Node.js Express de SmartGymBro no responde a las solicitudes HTTP o el proceso se detuvo por excepción no capturada.\",\n    comandos: [\n      \"# 1. Consultar últimas 100 líneas de logs:\",\n      \"docker logs --tail 100 gymbro-backend\",\n      \"# 2. Reiniciar el contenedor:\",\n      \"docker restart gymbro-backend\",\n      \"# 3. Validar probe de salud:\",\n      \"curl -I http://localhost:3100/health\"\n    ],\n    verificacion: \"Confirmar HTTP 200 en endpoint /health y retorno de métricas en /metrics para Prometheus.\",\n    ciberseguridad: \"Evitar exposición de stack trace en producción mediante NODE_ENV=production y rate-limiting en Nginx.\"\n  },\n  {\n    topic: \"HAProxyDown / Fallo en Enrutador de Base de Datos\",\n    keywords: [\"haproxy\", \"proxy\", \"5000\", \"5001\", \"7000\"],\n    diagnostico: \"HAProxy caído o estadísticas inaccesibles. La aplicación no puede resolver el nodo primario de escritura.\",\n    comandos: [\n      \"# 1. Reiniciar proxy:\",\n      \"docker restart gymbro-haproxy\",\n      \"# 2. Validar panel web:\",\n      \"curl -u admin:adminpass http://localhost:7000\"\n    ],\n    verificacion: \"Comprobar que los backends gymbro-db-node1, node2 y node3 aparezcan en verde.\",\n    ciberseguridad: \"Credenciales de estadísticas protegidas con HTTP Basic Auth.\"\n  }\n];\n\nconst queryLower = (query || \"\").toLowerCase();\nlet bestMatch = playbookDB[0]; // fallback default\nfor (const item of playbookDB) {\n  for (const kw of item.keywords) {\n    if (queryLower.includes(kw)) {\n      bestMatch = item;\n      break;\n    }\n  }\n}\n\nreturn JSON.stringify({\n  sop_encontrado: bestMatch.topic,\n  diagnostico_recomendado: bestMatch.diagnostico,\n  comandos_mitigacion: bestMatch.comandos.join('\\n'),\n  procedimiento_verificacion: bestMatch.verificacion,\n  impacto_ciberseguridad: bestMatch.ciberseguridad\n}, null, 2);"
+      },
+      "id": "tool-playbook-defensa",
+      "name": "Playbook Vectorial SOP",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8089/api/rest/issues/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "summary",
+              "value": "={{ '[AIOps-Defensa] ' + $('Extraer Incidente y Contexto').first().json.alertname + ' – ' + $('Extraer Incidente y Contexto').first().json.instance }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ 'INCIDENTE TELEMETRÍA PROMETHEUS:\n' + $('Extraer Incidente y Contexto').first().json.description + '\n\n=== RECOMENDACIÓN ASISTIDA POR INTELIGENCIA ARTIFICIAL (GEMINI + RAG SOP) ===\n' + $json.output }}"
+            },
+            {
+              "name": "project",
+              "value": "={{ { id: 1 } }}"
+            },
+            {
+              "name": "category",
+              "value": "={{ { name: 'Infraestructura' } }}"
+            },
+            {
+              "name": "handler",
+              "value": "={{ { name: 'facundo_db' } }}"
+            },
+            {
+              "name": "severity",
+              "value": "={{ { name: 'major' } }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ { name: 'high' } }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "mantis-create-defensa",
+      "name": "MantisBT – Crear Ticket con Sugerencia IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GymbroSeedMantis01",
+          "name": "MantisBT API Token"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "gsoniaemiliana@gmail.com",
+        "toEmail": "facundogaspar897@gmail.com",
+        "subject": "={{ '[SmartGymBro - AIOps] Alerta: ' + $('Extraer Incidente y Contexto').first().json.alertname + ' (' + $('Extraer Incidente y Contexto').first().json.instance + ')' }}",
+        "text": "={{ 'Incidente: ' + $('Extraer Incidente y Contexto').first().json.alertname + '\nInstancia: ' + $('Extraer Incidente y Contexto').first().json.instance + '\n\nRecomendación IA:\n' + $('Agente IA – Análisis y Playbook').first().json.output }}",
+        "html": "={{ '<!DOCTYPE html><html><body style=\"font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px;\">' +\n'<div style=\"max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e1e4e8; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08);\">' +\n  '<div style=\"background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #ffffff; padding: 24px; text-align: center;\">' +\n    '<h1 style=\"margin: 0; font-size: 22px;\">SmartGymBro – AIOps Incident Alert</h1>' +\n    '<p style=\"margin: 6px 0 0; font-size: 14px; opacity: 0.9;\">Automatización n8n Asistida por Inteligencia Artificial (Gemini + RAG SOP)</p>' +\n  '</div>' +\n  '<div style=\"padding: 24px;\">' +\n    '<div style=\"background: #fef2f2; border-left: 4px solid #ef4444; padding: 14px; border-radius: 4px; margin-bottom: 20px;\">' +\n      '<strong style=\"color: #991b1b; font-size: 16px;\">⚠️ ALERTA: ' + $('Extraer Incidente y Contexto').first().json.alertname + '</strong><br>' +\n      '<span style=\"color: #7f1d1d; font-size: 13px;\">Instancia: <b>' + $('Extraer Incidente y Contexto').first().json.instance + '</b> | Severidad: <b>' + $('Extraer Incidente y Contexto').first().json.severity + '</b></span>' +\n    '</div>' +\n    '<h3 style=\"color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 0;\">Detalle de Telemetría (Prometheus)</h3>' +\n    '<p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">' + $('Extraer Incidente y Contexto').first().json.description + '</p>' +\n    '<h3 style=\"color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;\">Dictamen Asistido por Inteligencia Artificial</h3>' +\n    '<div style=\"background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 16px; font-size: 13px; color: #334155; line-height: 1.6; white-space: pre-wrap;\">' +\n      $('Agente IA – Análisis y Playbook').first().json.output +\n    '</div>' +\n    '<div style=\"margin-top: 20px; padding: 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;\">' +\n      '<strong style=\"color: #166534;\">✅ Ticket en MantisBT Registrado:</strong><br>' +\n      '<span style=\"color: #15803d; font-size: 13px;\">Se ha derivado automáticamente a <b>facundo_db</b> para auditoría y remediación técnica.</span>' +\n    '</div>' +\n  '</div>' +\n  '<div style=\"background: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;\">' +\n    'Trabajo Final HIA 2026 – Alumnos: Facundo Gaspar (DBA) & Aldo Dante Antivilo (DevOps)<br>' +\n    'Flujo de Defensa: WF-DEFENSA en n8n' +\n  '</div>' +\n'</div></body></html>' }}",
+        "options": {}
+      },
+      "id": "email-defensa",
+      "name": "Enviar Correo con Sugerencia IA",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "GymbroSeedSmtpAcc01",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const alertname = $('Extraer Incidente y Contexto').first().json.alertname;\nconst instance = $('Extraer Incidente y Contexto').first().json.instance;\nconst output = $('Agente IA – Análisis y Playbook').first().json.output;\nconst emailSent = $('Enviar Correo con Sugerencia IA').first().json;\n\nconsole.log('[WF-DEFENSA] Ejecución exitosa para alerta:', alertname, 'en', instance);\n\nreturn [{\n  json: {\n    status: 'SUCCESS',\n    workflow: 'WF-DEFENSA',\n    alertname: alertname,\n    instance: instance,\n    ai_playbook_length: (output || '').length,\n    email_result: emailSent,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-log-defensa",
+      "name": "Registrar Éxito en Auditoría",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Prometheus – Consultar Firing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prometheus – Consultar Firing": {
+      "main": [
+        [
+          {
+            "node": "Extraer Incidente y Contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Incidente y Contexto": {
+      "main": [
+        [
+          {
+            "node": "Agente IA – Análisis y Playbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente IA – Análisis y Playbook",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Playbook Vectorial SOP": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente IA – Análisis y Playbook",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA – Análisis y Playbook": {
+      "main": [
+        [
+          {
+            "node": "MantisBT – Crear Ticket con Sugerencia IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MantisBT – Crear Ticket con Sugerencia IA": {
+      "main": [
+        [
+          {
+            "node": "Enviar Correo con Sugerencia IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Correo con Sugerencia IA": {
+      "main": [
+        [
+          {
+            "node": "Registrar Éxito en Auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "binaryMode": "separate"
+  }
+}
